@@ -27,7 +27,8 @@ N2 <- N2[rowMeans(N2 != 0) > 0.05,]
 # Y1 <- A1[1:500,]
 # Y2 <- A2[1:500,]
 
-scTenifoldXct <- function(X1,Y1, X2, Y2){
+scTenifoldXct <- function(X1,Y1, X2, Y2, nNet = 2){
+  nNet = 2
   iNet <- function(X,Y){
     X <- X[rowMeans(X != 0) > 0.05,]
     Y <- Y[rowMeans(Y != 0) > 0.05,]
@@ -59,8 +60,11 @@ scTenifoldXct <- function(X1,Y1, X2, Y2){
     rownames(iNet) <- paste0('X_', rownames(X))
     return(iNet)
   }
-  i1 <- lapply(seq_len(10), function(X){iNet(X1,Y1)})
-  i2 <- lapply(seq_len(10), function(X){iNet(X2,Y2)})
+  i1 <- lapply(seq_len(2), function(X){iNet(X1,Y1)})
+  i2 <- lapply(seq_len(2), function(X){iNet(X2,Y2)})
+  
+  save(i1,i2, file='tempI.RData')
+  load('tempI.RData')
   
   gX <- unique(unlist(lapply(c(i1,i2), function(X){rownames(X)})))
   gY <- unique(unlist(lapply(c(i1,i2), function(X){colnames(X)})))
@@ -71,7 +75,7 @@ scTenifoldXct <- function(X1,Y1, X2, Y2){
     colnames(O) <- gY
     O[rownames(X),colnames(X)] <- as.matrix(X)
     O <- as(O, 'dgCMatrix')
-    O <- graph_from_incidence_matrix(O, weighted = TRUE)[]
+    #O <- graph_from_incidence_matrix(O, weighted = TRUE)[]
     return(O)
   })
   
@@ -81,11 +85,18 @@ scTenifoldXct <- function(X1,Y1, X2, Y2){
     colnames(O) <- gY
     O[rownames(X),colnames(X)] <- as.matrix(X)
     O <- as(O, 'dgCMatrix')
-    O <- graph_from_incidence_matrix(O, weighted = TRUE)[]
+    #O <- graph_from_incidence_matrix(O, weighted = TRUE)[]
     return(O)
   })
   
-  tensorOutput <- tensorDecomposition(i1,i2)
+  t1 <- array(0, dim = c(length(gX), length(gY), 1, nNet))
+  t2 <- array(0, dim = c(length(gX), length(gY), 1, nNet))
+  
+  for(i in seq_len(nNet)){
+    t1[,,,i] <- as.matrix(i1[[i]])
+    t2[,,,i] <- as.matrix(i2[[i]])
+  }
+  
   
   i1 <- tensorOutput$X
   i2 <- tensorOutput$Y
@@ -128,23 +139,24 @@ gNames <- intersect(names(D1), names(D2))
 
 cor(D1[gNames], D2[gNames], method = 'sp')
 plot(D1[gNames], D2[gNames])
+
+boxplot(list(N1['Scg2',],N2['Scg2',]))
 # 
-# 
-# library(fgsea)
-# BIOP <- gmtPathways('https://amp.pharm.mssm.edu/Enrichr/geneSetLibrary?mode=text&libraryName=BioPlanet_2019')
-# GOBP <- gmtPathways('https://amp.pharm.mssm.edu/Enrichr/geneSetLibrary?mode=text&libraryName=GO_Biological_Process_2018')
-# 
-# drX <- DR[grepl('X_', DR$gene),]
-# zX <- drX$Z
-# names(zX) <- toupper(gsub('X_','',drX$gene))
-# eX <- fgseaMultilevel(GOBP, zX)
-# eX[eX$NES > 0 & eX$padj < 0.05,]
-# 
-# drY <- DR[grepl('Y_', DR$gene),]
-# zY <- drY$Z
-# names(zY) <- toupper(gsub('Y_','',drY$gene))
-# eY <- fgseaMultilevel(BIOP, zY)
-# eY[eY$NES > 0 & eY$padj < 0.05,]
+
+library(fgsea)
+BIOP <- gmtPathways('https://amp.pharm.mssm.edu/Enrichr/geneSetLibrary?mode=text&libraryName=BioPlanet_2019')
+GOBP <- gmtPathways('https://amp.pharm.mssm.edu/Enrichr/geneSetLibrary?mode=text&libraryName=GO_Biological_Process_2018')
+
+drX <- DR[grepl('X_', DR$gene),]
+zX <- drX$Z
+names(zX) <- toupper(gsub('X_','',drX$gene))
+eX <- fgsea(GOBP, zX, 10000)
+
+drY <- DR[grepl('Y_', DR$gene),]
+zY <- drY$Z
+names(zY) <- toupper(gsub('Y_','',drY$gene))
+eY <- fgseaMultilevel(BIOP, zY)
+eY[eY$NES > 0 & eY$padj < 0.05,]
 # 
 # 
 # which.max(o1['X_Scd2',] - o2['X_Scd2',])
