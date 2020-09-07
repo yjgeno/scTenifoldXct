@@ -22,13 +22,12 @@ A2 <- A2[rowMeans(A2 != 0) > 0.05,]
 N1 <- N1[rowMeans(N1 != 0) > 0.05,]
 N2 <- N2[rowMeans(N2 != 0) > 0.05,]
 
-# X1 <- N1[1:500,]
-# X2 <- N2[1:500,]
-# Y1 <- A1[1:500,]
-# Y2 <- A2[1:500,]
+X1 <- N1[1:1000,]
+X2 <- N2[1:1000,]
+Y1 <- A1[1:1000,]
+Y2 <- A2[1:1000,]
 
-scTenifoldXct <- function(X1,Y1, X2, Y2, nNet = 2){
-  nNet = 2
+scTenifoldXct <- function(X1,Y1, X2, Y2, nNet = 5){
   iNet <- function(X,Y){
     X <- X[rowMeans(X != 0) > 0.05,]
     Y <- Y[rowMeans(Y != 0) > 0.05,]
@@ -60,8 +59,8 @@ scTenifoldXct <- function(X1,Y1, X2, Y2, nNet = 2){
     rownames(iNet) <- paste0('X_', rownames(X))
     return(iNet)
   }
-  i1 <- lapply(seq_len(2), function(X){iNet(X1,Y1)})
-  i2 <- lapply(seq_len(2), function(X){iNet(X2,Y2)})
+  i1 <- lapply(seq_len(nNet), function(X){iNet(X1,Y1)})
+  i2 <- lapply(seq_len(nNet), function(X){iNet(X2,Y2)})
   
   save(i1,i2, file='tempI.RData')
   load('tempI.RData')
@@ -89,31 +88,68 @@ scTenifoldXct <- function(X1,Y1, X2, Y2, nNet = 2){
     return(O)
   })
   
-  t1 <- array(0, dim = c(length(gX), length(gY), 1, nNet))
-  t2 <- array(0, dim = c(length(gX), length(gY), 1, nNet))
+  t1 <- array(0, dim = c(length(gX), length(gY), nNet))
+  t2 <- array(0, dim = c(length(gX), length(gY), nNet))
   
   for(i in seq_len(nNet)){
-    t1[,,,i] <- as.matrix(i1[[i]])
-    t2[,,,i] <- as.matrix(i2[[i]])
+    t1[,,i] <- as.matrix(i1[[i]])
+    t2[,,i] <- as.matrix(i2[[i]])
   }
   
+  t1 <- rTensor::as.tensor(t1)
+  t1 <- rTensor::cp(t1, 5, max_iter = 1e3)
+  t1 <- t1$est@data
   
-  i1 <- tensorOutput$X
-  i2 <- tensorOutput$Y
+  t2 <- rTensor::as.tensor(t2)
+  t2 <- rTensor::cp(t2, 5, max_iter = 1e3)
+  t2 <- t2$est@data
   
-  MA <- manifoldAlignment((i1 + t(i1))/2, (i2 + t(i2))/2)
+  
+  for(i in seq_len(nNet)[-1]){
+    t1[,,1] <- t1[,,1] + t1[,,i]
+    t2[,,1] <- t2[,,1] + t2[,,i]
+  }
+  
+  t1 <- t1[,,1]
+  t2 <- t2[,,1]
+  
+  t1 <- t1/nNet
+  t2 <- t2/nNet
+  
+  t1 <- t1/max(abs(t1))
+  t2 <- t2/max(abs(t2))
+  
+  rownames(t1) <- rownames(t2) <- gX
+  colnames(t1) <- colnames(t2) <- gY
+  
+  i1 <- igraph::graph_from_incidence_matrix(t1, weighted = TRUE)
+  i2 <- igraph::graph_from_incidence_matrix(t2, weighted = TRUE)
+  
+  i1 <- i1[]
+  i2 <- i2[]
+  
+  i1 <- (i1 + t(i1))/2
+  i2 <- (i2 + t(i2))/2
+  
+  MA <- manifoldAlignment(i1, i2)
   DR <- dRegulation(MA)
-  O <- list(tensorNet = tensorOutput, manifoldAlignment = MA, diffRegulation = DR)
+  
+  O <- list(xNet = t1, yNet = t2, manifoldAlignment = MA, diffRegulation = DR)
   return(O)
 }
+
+testOut <- scTenifoldXct(Y1,X1,Y2,X2, nNet = 10)
+DR <- dRegulation(testOut$manifoldAlignment[,1:30])
+writeLines(gsub('X_|Y_','',DR$gene[DR$p.adj < 0.05]))
 
 testOut <- scTenifoldXct(N1,A1,N2,A2)
 save(testOut, file = 'na_Xct.RData')
 
-load('na_Xct.RData')
-DR1 <- dRegulation(testOut$manifoldAlignment[,1:2])
-load('tigss_Test.RData')
-DR2 <- dRegulation(testOut$manifoldAlignment[,1:2])
+# load('na_Xct.RData')
+# library(scTenifoldNet)
+# DR1 <- dRegulation(testOut$manifoldAlignment[,1:2])
+#load('tigss_Test.RData')
+#DR2 <- dRegulation(testOut$manifoldAlignment[,1:2])
 
 # writeLines(gsub('X_|Y_','',testOut$diffRegulation$gene[testOut$diffRegulation$Z > 0]))
 # 
@@ -132,30 +168,34 @@ DR2 <- dRegulation(testOut$manifoldAlignment[,1:2])
 # 
 D1 <- DR1$Z
 names(D1) <- DR1$gene
-D2 <- DR2$Z
-names(D2) <- DR2$gene
-
-gNames <- intersect(names(D1), names(D2))
-
-cor(D1[gNames], D2[gNames], method = 'sp')
-plot(D1[gNames], D2[gNames])
-
-boxplot(list(N1['Scg2',],N2['Scg2',]))
+#D2 <- DR2$Z
+#names(D2) <- DR2$gene
+# 
+# gNames <- intersect(names(D1), names(D2))
+# 
+# cor(D1[gNames], D2[gNames], method = 'sp')
+# plot(D1[gNames], D2[gNames])
+# 
+# boxplot(list(N1['Scg2',],N2['Scg2',]))
 # 
 
 library(fgsea)
 BIOP <- gmtPathways('https://amp.pharm.mssm.edu/Enrichr/geneSetLibrary?mode=text&libraryName=BioPlanet_2019')
 GOBP <- gmtPathways('https://amp.pharm.mssm.edu/Enrichr/geneSetLibrary?mode=text&libraryName=GO_Biological_Process_2018')
+load('O.RData')
 
 drX <- DR[grepl('X_', DR$gene),]
 zX <- drX$Z
 names(zX) <- toupper(gsub('X_','',drX$gene))
-eX <- fgsea(GOBP, zX, 10000)
+set.seed(1)
+eX <- fgseaMultilevel(GOBP, zX)
+eX[eX$NES > 0 & eX$padj < 0.05,]
 
 drY <- DR[grepl('Y_', DR$gene),]
 zY <- drY$Z
 names(zY) <- toupper(gsub('Y_','',drY$gene))
-eY <- fgseaMultilevel(BIOP, zY)
+set.seed(1)
+eY <- fgseaMultilevel(GOBP, zY)
 eY[eY$NES > 0 & eY$padj < 0.05,]
 # 
 # 
