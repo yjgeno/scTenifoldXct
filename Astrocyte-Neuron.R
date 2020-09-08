@@ -22,12 +22,12 @@ A2 <- A2[rowMeans(A2 != 0) > 0.05,]
 N1 <- N1[rowMeans(N1 != 0) > 0.05,]
 N2 <- N2[rowMeans(N2 != 0) > 0.05,]
 
-X1 <- N1[1:1000,]
-X2 <- N2[1:1000,]
-Y1 <- A1[1:1000,]
-Y2 <- A2[1:1000,]
+# X1 <- N1[1:1000,]
+# X2 <- N2[1:1000,]
+# Y1 <- A1[1:1000,]
+# Y2 <- A2[1:1000,]
 
-scTenifoldXct <- function(X1,Y1, X2, Y2, nNet = 5){
+scTenifoldXct <- function(X1,Y1, X2, Y2, nNet = 10){
   iNet <- function(X,Y){
     X <- X[rowMeans(X != 0) > 0.05,]
     Y <- Y[rowMeans(Y != 0) > 0.05,]
@@ -122,6 +122,9 @@ scTenifoldXct <- function(X1,Y1, X2, Y2, nNet = 5){
   rownames(t1) <- rownames(t2) <- gX
   colnames(t1) <- colnames(t2) <- gY
   
+  t1 <- round(t1, 3)
+  t2 <- round(t2, 3)
+  
   i1 <- igraph::graph_from_incidence_matrix(t1, weighted = TRUE)
   i2 <- igraph::graph_from_incidence_matrix(t2, weighted = TRUE)
   
@@ -134,16 +137,16 @@ scTenifoldXct <- function(X1,Y1, X2, Y2, nNet = 5){
   MA <- manifoldAlignment(i1, i2)
   DR <- dRegulation(MA)
   
-  O <- list(xNet = t1, yNet = t2, manifoldAlignment = MA, diffRegulation = DR)
+  O <- list(xNet = Matrix(t1), yNet = Matrix(t2), manifoldAlignment = MA, diffRegulation = DR)
   return(O)
 }
 
-testOut <- scTenifoldXct(Y1,X1,Y2,X2, nNet = 10)
-DR <- dRegulation(testOut$manifoldAlignment[,1:30])
-writeLines(gsub('X_|Y_','',DR$gene[DR$p.adj < 0.05]))
-
 testOut <- scTenifoldXct(N1,A1,N2,A2)
 save(testOut, file = 'na_Xct.RData')
+
+# load('na_Xct5.RData')
+# DR <- testOut$diffRegulation
+
 
 # load('na_Xct.RData')
 # library(scTenifoldNet)
@@ -166,8 +169,8 @@ save(testOut, file = 'na_Xct.RData')
 # load('O.RData')
 # DR2 <- DR
 # 
-D1 <- DR1$Z
-names(D1) <- DR1$gene
+# D1 <- DR1$Z
+# names(D1) <- DR1$gene
 #D2 <- DR2$Z
 #names(D2) <- DR2$gene
 # 
@@ -182,7 +185,6 @@ names(D1) <- DR1$gene
 library(fgsea)
 BIOP <- gmtPathways('https://amp.pharm.mssm.edu/Enrichr/geneSetLibrary?mode=text&libraryName=BioPlanet_2019')
 GOBP <- gmtPathways('https://amp.pharm.mssm.edu/Enrichr/geneSetLibrary?mode=text&libraryName=GO_Biological_Process_2018')
-load('O.RData')
 
 drX <- DR[grepl('X_', DR$gene),]
 zX <- drX$Z
