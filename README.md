@@ -3,6 +3,8 @@ Manifold learning to detect cell-cell interactions.
 
 ### Installation
 ```shell
+conda create -n scTenifold
+conda activate scTenifold
 git clone git@github.com:cailab-tamu/scTenifoldXct.git
 cd scTenifoldXct
 ```
@@ -13,8 +15,6 @@ pip install scTenifoldpy
 
 ### Dependencies Installation
 ```shell
-conda create -n scTenifoldXct
-conda activate scTenifoldXct
 pip install -r requirements.txt
 ```
 
