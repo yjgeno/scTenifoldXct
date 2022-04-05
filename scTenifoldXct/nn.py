@@ -84,6 +84,16 @@ class ManifoldAlignmentNet:
             self.model_dic[f'model_{i}'].eval()
             print(f"load model from {file_dir}/model_{i}.th")
 
+    def reload_embeds(self):
+        y_preds = []
+        for i in range(1, self.n_models + 1):
+            y_preds.append(self.model_dic[f'model_{i}'](self.data_arr[i - 1]))
+        outputs = torch.cat(y_preds[:], 0) 
+        u, _, v = torch.svd(outputs, some=True)
+        proj_outputs = u @ v.t()
+        self.proj_outputs_np = proj_outputs.detach().numpy()
+        return self.proj_outputs_np
+
     def train(self,
               n_steps = 1000,
               lr = 0.01,
@@ -136,7 +146,7 @@ class ManifoldAlignmentNet:
             optimizer.step()
 
         self.proj_outputs_np = proj_outputs.detach().numpy()
-        return self.proj_outputs_np, self.losses
+        return self.proj_outputs_np
 
     def plot_losses(self, file_name=None):
         '''plot loss every 100 steps'''

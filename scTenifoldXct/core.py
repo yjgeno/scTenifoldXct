@@ -409,17 +409,21 @@ class scTenifoldXct:
                      for _, cell_data in self._cell_data_dic.items()]
         return data_arr  # a list
 
-    def train_nn(self,
+    def get_embeds(self,
+                 train = True,
                  n_steps=1000,
                  lr=0.01,
                  verbose=True,
-                 plot_losses: bool = True,
+                 plot_losses: bool = False,
                  losses_file_name: str = None,
                  dist_metric: str = "euclidean",
                  rank: bool = False,
                  **optim_kwargs
                  ):
-        projections, losses = self._nn_trainer.train(n_steps=n_steps, lr=lr, verbose=verbose, **optim_kwargs)
+        if train:
+            projections = self._nn_trainer.train(n_steps=n_steps, lr=lr, verbose=verbose, **optim_kwargs)
+        else:
+            projections = self._nn_trainer.reload_embed()
         if plot_losses:
             self._nn_trainer.plot_losses(losses_file_name)
 
@@ -428,8 +432,7 @@ class scTenifoldXct:
                                                                 w12_shape=self.w12_shape,
                                                                 dist_metric=dist_metric,
                                                                 rank=rank)
-
-        return projections, losses
+        return projections
 
     def plot_losses(self, **kwargs):
         self._nn_trainer.plot_losses(**kwargs)
@@ -438,10 +441,11 @@ class scTenifoldXct:
         if view not in ["sender", "receiver"]:
             raise ValueError("view needs to be sender or receiver")
 
-        plot_pcNet_method(self._net_A if view == "sender" else self._net_B,
+        g = plot_pcNet_method(self._net_A if view == "sender" else self._net_B,
                           gene_names=gene_names,
                           tf_names=self._TFs["TF_symbol"].to_list(),
                           **kwargs)
+        return g
 
     def null_test(self,
                   filter_zeros: bool = True,
