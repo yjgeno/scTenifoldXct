@@ -72,13 +72,17 @@ class ManifoldAlignmentNet:
         return model_dic
 
     def save_model_states(self, file_dir):
+        import os
+        os.makedirs(file_dir, exist_ok = True)
         for i in range(1, self.n_models + 1):
-            torch.save(self.model_dic[f'model_{i}'].state_dict(), f"{file_dir}/model_{i}")
+            torch.save(self.model_dic[f'model_{i}'].state_dict(), f"{file_dir}/model_{i}.th")
+            print(f"save model to {file_dir}/model_{i}.th")
 
     def load_model_states(self, file_dir):
         for i in range(1, self.n_models + 1):
-            self.model_dic[f'model_{i}'].load_state_dict(torch.load(f"{file_dir}/model_{i}"))
+            self.model_dic[f'model_{i}'].load_state_dict(torch.load(f"{file_dir}/model_{i}.th"))
             self.model_dic[f'model_{i}'].eval()
+            print(f"load model from {file_dir}/model_{i}.th")
 
     def train(self,
               n_steps = 1000,
