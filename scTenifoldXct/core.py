@@ -329,8 +329,8 @@ class scTenifoldXct:
         val_df = pd.DataFrame()
         for c in self._LRs.columns:
             for m in self._metrics:
-                val_df[f"{m}_L"] = self._LRs[c].map(self._cell_metric_dict[self._cell_names[0]]).fillna(0.)
-                val_df[f"{m}_R"] = self._LRs[c].map(self._cell_metric_dict[self._cell_names[1]]).fillna(0.)
+                val_df[f"{m}_L"] = self._LRs[c].map(self._cell_metric_dict[self._cell_names[0]][m]).fillna(0.)
+                val_df[f"{m}_R"] = self._LRs[c].map(self._cell_metric_dict[self._cell_names[1]][m]).fillna(0.)
         df = pd.concat([self._LRs, val_df], axis=1)  # concat 1:1 since sharing same index
         df = df[(df['mean_L'] > 0) & (df['mean_R'] > 0)]  # filter 0 (none or zero expression) of LR
         if self.verbose:
@@ -466,7 +466,6 @@ class scTenifoldXct:
 
 
 if __name__ == '__main__':
-    import nn
     import scanpy as sc
 
     ada = sc.datasets.paul15()[:, :100] # raw counts
@@ -474,19 +473,11 @@ if __name__ == '__main__':
     ada.layers['raw'] = np.asarray(ada.X, dtype=int)
     sc.pp.log1p(ada)
     ada.layers['log1p'] = ada.X.copy()
-
-    # obj = Xct(ada, '14Mo', '15Mo', specis="Mouse", build_GRN = True, save_GRN = True, pcNet_name = 'Net_for_Test', queryDB = None, verbose = True)
-    # print(obj)
-    # obj_load = Xct(ada, '14Mo', '15Mo', build_GRN = False, pcNet_name = 'Net_for_Test', queryDB = None, verbose = True)
-    # print('Testing loading...')
-
-    # df1 = obj.fill_metric()
-    # candidates = get_candidates(df1)
-    # counts_np = get_counts_np(obj)
-    # projections, losses = nn.train_and_project(counts_np, obj._w, dim = 2, steps = 1000, lr = 0.001)
-
-    # df_nn = nn_aligned_dist(obj, projections)
-    # df_enriched = chi2_test(df_nn, df = 1, FDR = False, candidates = candidates)
-    # print(df_enriched.head())
+    xct_obj = scTenifoldXct(data=ada, 
+                        cell_names=['14Mo', '15Mo'],
+                        obs_label="paul15_clusters",
+                        rebuild_GRN=False, 
+                        GRN_file_dir='./Net_for_Test',  
+                        query_DB=None, verbose=True)
 
 
