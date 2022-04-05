@@ -142,7 +142,7 @@ class GRN:
             return new_net
 
         bool_ind = self._gene_names.isin(values)
-        self._net = self._net.tocsr()[bool_ind, bool_ind]
+        self._net = self._net.tocsr()[bool_ind, :][:, bool_ind]
         self._gene_names = self._gene_names[bool_ind]
 
     def concat(self, grn, axis=0):

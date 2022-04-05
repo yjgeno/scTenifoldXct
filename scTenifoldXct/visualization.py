@@ -119,7 +119,7 @@ def plot_pcNet_method(net,
     if verbose:
         print(f'undirected graph constructed: \n# of nodes: {len(g.vs)}, # of edges: {len(g.es)}\n')
 
-    kws = dict(visual_style_pcnet)
+    kws = dict(visual_style_pcnet._asdict())
     kws.update(kwargs)
     kws = _parse_kws(kws, g, bbox_scale, edge_width_scale)
 
