@@ -119,11 +119,15 @@ class GRN:
         self._net = sparse_matrix
         self._gene_names = gene_names
 
-    def set_rows_as(self, gene_names, value):
+    def set_rows_as(self, gene_names, value):   
         self._net[self._gene_names.isin(gene_names), :] = value
 
     def set_cols_as(self, gene_names, value):
         self._net[:, self._gene_names.isin(gene_names)] = value
+    
+    def set_rows_and_cols_as(self, gene_names, value):
+        mask = self._gene_names.isin(gene_names)[:, None] @ self._gene_names.isin(gene_names)[None, :]
+        self._net[mask] = value
 
     def copy(self):
         new_net = GRN()
@@ -141,7 +145,7 @@ class GRN:
             new_net.subset_in(values=values, copy=False)
             return new_net
 
-        bool_ind = self._gene_names.isin(values)
+        bool_ind = self._gene_names.isin(values) # np.array
         self._net = self._net.tocsr()[bool_ind, :][:, bool_ind]
         self._gene_names = self._gene_names[bool_ind]
 
@@ -412,7 +416,7 @@ class scTenifoldXct:
     def get_embeds(self,
                  train = True,
                  n_steps=1000,
-                 lr=0.01,
+                 lr=0.001,
                  verbose=True,
                  plot_losses: bool = False,
                  losses_file_name: str = None,
@@ -423,7 +427,7 @@ class scTenifoldXct:
         if train:
             projections = self._nn_trainer.train(n_steps=n_steps, lr=lr, verbose=verbose, **optim_kwargs)
         else:
-            projections = self._nn_trainer.reload_embed()
+            projections = self._nn_trainer.reload_embeds()
         if plot_losses:
             self._nn_trainer.plot_losses(losses_file_name)
 

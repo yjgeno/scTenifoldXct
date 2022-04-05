@@ -35,7 +35,7 @@ class ManifoldAlignmentNet:
                  w: coo_matrix,
                  n_dim,
                  layers,
-                 verbose):
+                 verbose: bool = False):
         # TODO: seed
         self.n_models, self.data_arr, self.w = self._check_data(data_arr, w=w)
         self.model_dic = self.create_models(layers, n_dim, verbose)
