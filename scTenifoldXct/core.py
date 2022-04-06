@@ -58,7 +58,6 @@ class GRN:
                 print(f'building GRN {name}...')
             # self._net = cal_pcNet(data.to_df().T, nComp=5, symmetric=True, **kwargs)
             self._net = pcNet(data.X, nComp=5, symmetric=True)
-            print('self._net.shape:', self._net.shape)
             self._gene_names = data.var_names.copy(deep=True)
             if verbose:
                 print(f'GRN of {name} has been built')
@@ -264,13 +263,12 @@ class scTenifoldXct:
         self._nn_trainer = ManifoldAlignmentNet(self._get_data_arr(),
                                                 w=self._w,
                                                 n_dim=n_dim,
-                                                layers=None,
-                                                verbose=verbose)
+                                                layers=None)
 
         self._aligned_result = None
 
     @property
-    def nn_trainer(self):
+    def trainer(self):
         return self._nn_trainer
 
     @property
@@ -341,7 +339,7 @@ class scTenifoldXct:
         df = pd.concat([self._LRs, val_df], axis=1)  # concat 1:1 since sharing same index
         df = df[(df['mean_L'] > 0) & (df['mean_R'] > 0)]  # filter 0 (none or zero expression) of LR
         if self.verbose:
-            print('Selected {} LR pairs'.format(df.shape[0]))
+            print('selected {} LR pairs'.format(df.shape[0]))
 
         return df
 
@@ -404,7 +402,7 @@ class scTenifoldXct:
                         2 * w12_orig_sum) * w12  # scale factor using w12_orig
         w12 = w12.todok()
         if self.verbose:
-            print(f"Trying to concatenate pcnet using {self._net_A}")
+            print(f"concatenating GRNs...")
         w = sparse.vstack([sparse.hstack([self._net_A.net.todok() + 1, w12]),
                            sparse.hstack([w12.T, self._net_B.net.todok() + 1])])
 
@@ -420,7 +418,7 @@ class scTenifoldXct:
                  train = True,
                  n_steps=1000,
                  lr=0.001,
-                 verbose=True,
+                 verbose=False,
                  plot_losses: bool = False,
                  losses_file_name: str = None,
                  dist_metric: str = "euclidean",
@@ -456,11 +454,11 @@ class scTenifoldXct:
 
     def null_test(self,
                   filter_zeros: bool = True,
-                  pct=0.05,
+                  pval=0.05,
                   plot_result=False):
         return null_test(self._aligned_result, self._candidates,
                          filter_zeros=filter_zeros,
-                         pct=pct,
+                         pval=pval,
                          plot=plot_result)
 
     def chi2_test(self,

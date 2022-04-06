@@ -8,6 +8,7 @@ import torch.nn as nn
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from tqdm import tqdm
 
 
 from scTenifoldXct.stiefel import *
@@ -34,11 +35,10 @@ class ManifoldAlignmentNet:
                  data_arr,
                  w: coo_matrix,
                  n_dim,
-                 layers,
-                 verbose: bool = False):
+                 layers):
         # TODO: seed
         self.n_models, self.data_arr, self.w = self._check_data(data_arr, w=w)
-        self.model_dic = self.create_models(layers, n_dim, verbose)
+        self.model_dic = self.create_models(layers, n_dim)
 
     def _check_data(self, data_arr, w) -> (int, np.ndarray, coo_matrix):
         n_models = len(data_arr)
@@ -48,7 +48,7 @@ class ManifoldAlignmentNet:
             raise ValueError('input sequence of counts consistent with correspondence')
         return n_models, data_arr, w
 
-    def create_models(self, layers, n_dim, verbose=True):
+    def create_models(self, layers, n_dim):
         layer_dic = {}
         if layers is None:
             a = 4
@@ -65,11 +65,13 @@ class ManifoldAlignmentNet:
         torch.manual_seed(0)
         for i in range(1, self.n_models + 1):
             model_dic[f'model_{i}'] = Net(self.data_arr[i - 1].shape[1], *layer_dic[i])
-            if verbose:
-                print(model_dic[f'model_{i}'])
             self.data_arr[i - 1] = torch.from_numpy(self.data_arr[i - 1].astype(np.float32))
 
         return model_dic
+
+    def arch(self):
+        for i in range(1, self.n_models + 1):
+            print(f'model_{i}:\n', self.model_dic[f'model_{i}'])
 
     def save_model_states(self, file_dir):
         import os
@@ -97,7 +99,7 @@ class ManifoldAlignmentNet:
     def train(self,
               n_steps = 1000,
               lr = 0.01,
-              verbose = True,
+              verbose = False,
               **optim_kwargs):
         assert n_steps > 0
         self.losses = []
@@ -109,7 +111,7 @@ class ManifoldAlignmentNet:
         for i in range(1, self.n_models + 1):
             self.model_dic[f'model_{i}'].train()
 
-        for t in range(n_steps):
+        for t in tqdm(range(n_steps), desc = "training...", total = n_steps):
             # Forward pass: Compute predicted y by passing x to the model
             y_preds = []
             for i in range(1, self.n_models + 1):
