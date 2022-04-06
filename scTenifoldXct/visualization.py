@@ -22,7 +22,7 @@ Style = namedtuple("visual_style", ["vertex_size",
                                     "tf_color",
                                     "tf_shape", "mark_color"],
                    defaults=(50, 12, 0.0, 0.1, 70, "large", (512, 512),
-                             "darkorange", "square", "darkgray", "circle", "whitesmoke"))
+                             "darkorange", "square", "lightgray", "circle", ["whitesmoke", "whitesmoke"]))
 
 
 visual_style_pcnet = Style(layout="large", bbox_size=(512, 512))
@@ -41,8 +41,8 @@ def _interact_graph(main_graph: ig.Graph, matched_g: ig.Graph):
     return main_graph
 
 
-def _parse_kws(kws, g, bbox_scale, g1=None, g2=None, added_e = 0,
-               edge_width_scale = None, edge_width_max = None):
+def _parse_kws(kws, g, bbox_scale, g1=None, g2=None, 
+               edge_width_scale = None, edge_width_max = None, add_edges = None):
     kws = {k: v for k, v in kws.items()}
     bbox_size = kws.pop("bbox_size")
     tf_color = kws.pop("tf_color")
@@ -62,14 +62,13 @@ def _parse_kws(kws, g, bbox_scale, g1=None, g2=None, added_e = 0,
                               for w in g.es['weight']]
     else:
         kws["edge_width"] = [edge_width_scale * abs(w) for w in g.es['weight']]
-    kws["edge_color"] = ['red' if w > 0 else 'blue' if i < len(g.es) - added_e else "maroon"
-                         for i, w in enumerate(g.es['weight'])]
+    added_e = add_edges if add_edges is not None else 0
+    kws["edge_color"] = ['red' if all([w > 0, i < len(g.es) - added_e]) else 'blue' if i < len(g.es) - added_e else 'darkgreen' for i, w in enumerate(g.es['weight'])]
     kws["edge_arrow_size"] = [1e-12 if i < len(g.es) - added_e else 1 for i, _ in enumerate(g.es)]
     if g1 is not None and g2 is not None:
-        kws["mark_groups"] = [(list(range(0, len(g1.vs))), mark_color[0])] + [(list(range(0, len(g2.vs))), mark_color[1])]
+        kws["mark_groups"] = [(list(range(0, len(g1.vs))), mark_color[0])] + [(list(range(len(g1.vs), len(g1.vs) + len(g2.vs))), mark_color[1])]
     else:
-        kws["mark_groups"] = [(list(range(0, len(g.vs))), mark_color)]
-
+        kws["mark_groups"] = [(list(range(0, len(g.vs))), mark_color[0])]
     return kws
 
 
@@ -85,15 +84,19 @@ def plot_pcNet_method(net,
                       verbose=False,
                       edge_width_scale=None,
                       **kwargs):
-
+    # print('original pcnet', net._net.shape, 'dropout %: {:3f}'.format(100*np.sum(net._net == 0)/(net._net.shape[0]*net._net.shape[1])))
     subnet = net.subset_in(gene_names+tf_names, copy=True)
-    subnet.set_rows_as(tf_names, 0)
-    subnet.set_cols_as(tf_names, 0)
+    # print('zeros after filter TFs:', subnet._net.shape, np.sum(subnet._net == 0))
+    subnet.set_rows_and_cols_as(tf_names, 0)
+    # print('zeros after set TFs as 0:', subnet._net.shape, np.sum(subnet._net == 0))
+    # subnet.set_rows_as(tf_names, 0)
+    # subnet.set_cols_as(tf_names, 0)
 
     g = ig.Graph.Weighted_Adjacency(scipy.sparse.tril(subnet.net), mode='directed', attr="weight",
                                     loops=True)  # upper triangular for directionality
     g.vs["name"] = subnet.gene_names
     g.vs["is_TF"] = subnet.gene_names.isin(tf_names)
+    # print('g.es.weight, non-zero/all:', np.sum(np.array(g.es['weight']) != 0), '/', len(g.es['weight']), )
     if len(g.es) == 0:
         gene_names = ' '.join(map(str, gene_names))  # string
         raise ValueError(f'target gene {gene_names} generated 0 edge...')
@@ -113,7 +116,7 @@ def plot_pcNet_method(net,
             if v.degree() == 0:
                 to_delete_ids.append(v.index)
                 if v['name'] in gene_names:
-                    warnings.warn(f"{v['name']} has been removed due to degree equals to zero among top weighted edges")
+                    print(f"{v['name']} has been removed due to degree equals to zero among top weighted edges")
         g.delete_vertices(to_delete_ids)
 
     if verbose:
@@ -125,8 +128,10 @@ def plot_pcNet_method(net,
 
     if file_name is not None and verbose:
         print(f'graph saved as \"{file_name}\"')
-    ig.plot(g, file_name, **kws)
-    return g
+    if show:
+        return ig.plot(g, file_name, **kws)
+    else:
+        return g
 
 
 def plot_XNet(g1, g2,
@@ -134,6 +139,7 @@ def plot_XNet(g1, g2,
               verbose=False,
               edge_width_scale=None, edge_width_max=5,
               bbox_scale=1,
+              show = False,
               **kwargs):
     '''visualize merged GRN from sender and receiver cell types,
         use edge_width_scale to make two graphs width comparable (both using absolute values)'''
@@ -158,13 +164,15 @@ def plot_XNet(g1, g2,
         if verbose:
             print(f'edge from {pair[0]} to {pair[1]} added')
 
-    kws = dict(visual_style_xnet)
+    kws = dict(visual_style_xnet._asdict())
     kws.update(kwargs)
-    kws = _parse_kws(kws, gg, g1=g1, g2=g2,
+    kws = _parse_kws(kws, g=gg, g1=g1, g2=g2,
                      bbox_scale=bbox_scale,
                      edge_width_scale=edge_width_scale,
-                     edge_width_max=edge_width_max)
-
+                     edge_width_max=edge_width_max, add_edges=added_e)
     if file_name is not None and verbose:
         print(f'graph saved as \"{file_name}\"')
-    ig.plot(gg, file_name, **kws)
+    if show:
+        return ig.plot(gg, file_name, **kws)
+    else:
+        return gg
