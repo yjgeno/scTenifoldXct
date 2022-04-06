@@ -12,9 +12,10 @@ import anndata
 import scipy
 from scipy import sparse
 
-import sys
-sys.path.append("../../scTenifoldpy")
-from scTenifold import cal_pcNet
+# import sys
+# sys.path.append("../../scTenifoldpy")
+# from scTenifold import cal_pcNet
+from .pcNet import pcNet
 from .nn import ManifoldAlignmentNet
 from .stat import null_test, chi2_test
 from .visualization import plot_pcNet_method
@@ -38,7 +39,7 @@ class GRN:
         name: str
             The name of this object, it will be used to name the saved GRN
         data: anndata.AnnData
-            The data used to construct this object
+            The adata used to construct this object
         GRN_file_dir: PathLike
             The dir path containing the saved GRN
         rebuild_GRN: bool
@@ -55,7 +56,9 @@ class GRN:
         if rebuild_GRN:
             if verbose:
                 print(f'building GRN {name}...')
-            self._net = cal_pcNet(data.to_df().T, nComp=5, symmetric=True, **kwargs)
+            # self._net = cal_pcNet(data.to_df().T, nComp=5, symmetric=True, **kwargs)
+            self._net = pcNet(data.X, nComp=5, symmetric=True)
+            print('self._net.shape:', self._net.shape)
             self._gene_names = data.var_names.copy(deep=True)
             if verbose:
                 print(f'GRN of {name} has been built')
