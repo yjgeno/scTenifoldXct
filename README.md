@@ -19,16 +19,19 @@ conda activate scTenifold
 The following code runs scTenifoldXct on an example dataset located in the tutorials.
 ```python
 import scTenifoldXct
+import scanpy as sc
 
 adata = sc.read_h5ad('data/adata_short_example.h5ad')
 xct = scTenifoldXct(data = adata, 
                     cell_names = ['Inflam. FIB', 'Inflam. DC'],
                     obs_label = "ident",
                     rebuild_GRN = True, 
-                    GRN_file_dir = './Net_example',  
-                    verbose = True)
+                    GRN_file_dir = './Net_example_dev',  
+                    verbose = True,
+                    n_cpus = -1)
 emb = xct.get_embeds(train = True)
 xct_pairs = xct.null_test()
+print(xct_pairs)
 ```
 
 ### Tutorial

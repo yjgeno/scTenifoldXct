@@ -15,7 +15,7 @@ from scipy import sparse
 # import sys
 # sys.path.append("../../scTenifoldpy")
 # from scTenifold import cal_pcNet
-from .pcNet import pcNet
+from .pcNet import make_pcNet
 from .nn import ManifoldAlignmentNet
 from .stat import null_test, chi2_test
 from .visualization import plot_pcNet_method
@@ -55,12 +55,11 @@ class GRN:
         # load pcnet
         if rebuild_GRN:
             if verbose:
-                print(f'building GRN {name}...')
-            # self._net = cal_pcNet(data.to_df().T, nComp=5, symmetric=True, **kwargs)
-            self._net = pcNet(data.X, nComp=5, symmetric=True)
+                print(f'building GRN of {name}...')
+            self._net = make_pcNet(data.X, nComp = 5, as_sparse = True, timeit = verbose, **kwargs)
             self._gene_names = data.var_names.copy(deep=True)
-            if verbose:
-                print(f'GRN of {name} has been built')
+            # if verbose:
+            #     print(f'GRN of {name} has been built')
 
             if GRN_file_dir is not None:
                 os.makedirs(GRN_file_dir, exist_ok = True)
@@ -197,7 +196,8 @@ class scTenifoldXct:
                  mu: float = 1.,
                  scale_w: bool = True,
                  n_dim: int = 3,
-                 verbose=True):
+                 verbose=True,
+                 **kwargs):
         """
         The main object used to do xct analysis.
 
@@ -245,12 +245,14 @@ class scTenifoldXct:
                           data=self._cell_data_dic[self._cell_names[0]],
                           GRN_file_dir=GRN_file_dir,
                           rebuild_GRN=rebuild_GRN,
-                          verbose=verbose)
+                          verbose=verbose,
+                          **kwargs)
         self._net_B = GRN(name=self._cell_names[1],
                           data=self._cell_data_dic[self._cell_names[1]],
                           GRN_file_dir=GRN_file_dir,
                           rebuild_GRN=rebuild_GRN,
-                          verbose=verbose)
+                          verbose=verbose,
+                          **kwargs)
         if verbose:
             print('building correspondence...')
 
@@ -266,6 +268,8 @@ class scTenifoldXct:
                                                 layers=None)
 
         self._aligned_result = None
+        if verbose:
+            print('scTenifoldXct init completed')
 
     @property
     def trainer(self):
@@ -476,17 +480,17 @@ class scTenifoldXct:
 
 if __name__ == '__main__':
     import scanpy as sc
+    from pathlib import Path
 
-    ada = sc.datasets.paul15()[:, :100] # raw counts
-    ada.obs = ada.obs.rename(columns={'paul15_clusters': 'ident'})
-    ada.layers['raw'] = np.asarray(ada.X, dtype=int)
-    sc.pp.log1p(ada)
-    ada.layers['log1p'] = ada.X.copy()
-    xct_obj = scTenifoldXct(data=ada, 
-                        cell_names=['14Mo', '15Mo'],
-                        obs_label="paul15_clusters",
-                        rebuild_GRN=False, 
-                        GRN_file_dir='./Net_for_Test',  
-                        query_DB=None, verbose=True)
+    workpath = Path.joinpath(Path(__file__).parent.parent, "tutorials/data")
+    adata = sc.read_h5ad(workpath / 'adata_short_example.h5ad')
+    xct = scTenifoldXct(data = adata, 
+                            cell_names = ['Inflam. FIB', 'Inflam. DC'],
+                            obs_label = "ident",
+                            rebuild_GRN = True, # timer
+                            GRN_file_dir = './Net_example_dev',  
+                            verbose = True,
+                            n_cpus = -1)
+    # python -m scTenifoldXct.core
 
 
