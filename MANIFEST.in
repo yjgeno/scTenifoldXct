@@ -1,0 +1,3 @@
+recursive-include data *.csv
+recursive-include tutorials *.h5ad *.ipynb
+prune tutorials/.ipynb_checkpoints

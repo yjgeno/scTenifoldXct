@@ -89,7 +89,8 @@ def make_pcNet(X,
         ray.init(num_cpus = n_cpus)
         print(f'ray init, using {n_cpus} CPUs')
 
-        X_ray = ray.put(X)
+        X_ray = ray.put(X) # put X to distributed object store and return object ref (ID)
+        # print(X_ray)
         net = pc_net_parallel.remote(X_ray, nComp = nComp, scale = scale, symmetric = symmetric, q = q, 
                     as_sparse = as_sparse, random_state = random_state)
         net = ray.get(net)

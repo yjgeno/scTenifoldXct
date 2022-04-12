@@ -1,7 +1,6 @@
 from typing import List
 import os
 from os import PathLike
-import warnings
 from pathlib import Path
 
 import numpy as np
