@@ -1,0 +1,1 @@
+from .version import __version__ # scTenifoldXct.__version__
