@@ -5,6 +5,21 @@ HERE = pathlib.Path(__file__).parent
 README = (HERE / "README.md").read_text()
 DESCRIPTION = "scTenifoldXct"
 
+INSTALL_REQUIRES = [
+        "anndata==0.8.0",
+        "matplotlib==3.5.1",
+        "numpy==1.21.6",
+        "pandas==1.4.2",
+        "pytest==7.1.1",
+        "python_igraph==0.9.10",
+        "ray==1.11.0",
+        "scanpy==1.9.1",
+        "scipy==1.8.0",
+        "statsmodels==0.13.2",
+        "torch==1.11.0",
+        "tqdm==4.64.0",
+    ]
+
 setup(
     name="scTenifoldXct",
     version="0.0.1.dev1",
@@ -35,8 +50,10 @@ setup(
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10"
     ],
-    packages=find_packages(exclude=("tests*",)), # ["scTenifoldXct"]
-    include_package_data=True, # MANIFEST
+    packages=["scTenifoldXct"], #find_packages(exclude=("tests*",))
+    package_data={"scTenifoldXct": ['database/*.csv']},
+    # include_package_data=True, # MANIFEST
+    install_requires=INSTALL_REQUIRES,
     entry_points={
         "console_scripts": [
             "run_Xct = scTenifoldXct.core:main",

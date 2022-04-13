@@ -11,9 +11,6 @@ import anndata
 import scipy
 from scipy import sparse
 
-# import sys
-# sys.path.append("../../scTenifoldpy")
-# from scTenifold import cal_pcNet
 from .pcNet import make_pcNet
 from .nn import ManifoldAlignmentNet
 from .stat import null_test, chi2_test
@@ -232,9 +229,13 @@ class scTenifoldXct:
         for name in self._cell_names:
             self.load_data(data, name, obs_label)
         self._species = species
-        self._LRs = self._load_db_data(Path(__file__).parent.parent / Path("data/LR.csv"),
+        # self._LRs = self._load_db_data(Path(__file__).parent.parent / Path("data/LR.csv"),
+        #                                ['ligand', 'receptor'])
+        # self._TFs = self._load_db_data(Path(__file__).parent.parent / Path("data/TF.csv"), None)
+        import pkg_resources
+        self._LRs = self._load_db_data(pkg_resources.resource_filename('scTenifoldXct', 'database/LR.csv'),
                                        ['ligand', 'receptor'])
-        self._TFs = self._load_db_data(Path(__file__).parent.parent / Path("data/TF.csv"), None)
+        self._TFs = self._load_db_data(pkg_resources.resource_filename('scTenifoldXct', 'database/TF.csv'), None)
 
         # fill metrics
         self._LR_metrics = self.fill_metric()
@@ -476,11 +477,7 @@ class scTenifoldXct:
                          candidates=self._candidates,
                          plot=plot_result)
 
-
-if __name__ == '__main__':
-    import scanpy as sc
-    from pathlib import Path
-
+def main():
     workpath = Path.joinpath(Path(__file__).parent.parent, "tutorials/data")
     adata = sc.read_h5ad(workpath / 'adata_short_example.h5ad')
     xct = scTenifoldXct(data = adata, 
@@ -490,6 +487,9 @@ if __name__ == '__main__':
                             GRN_file_dir = './Net_example_dev',  
                             verbose = True,
                             n_cpus = -1)
+
+if __name__ == '__main__':
+    main()
     # python -m scTenifoldXct.core
 
 

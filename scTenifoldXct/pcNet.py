@@ -104,10 +104,12 @@ def make_pcNet(X,
         print('execution time of making pcNet: {:.2f} s'.format(duration))
     return net
 
-if __name__ == '__main__':
+def main():
     counts = np.random.randint(0, 10, (5, 100))
     net = make_pcNet(counts, as_sparse = True, timeit = True, n_cpus = -1)
     print(f'input counts shape: {counts.shape},\nmake pcNet completed, shape: {net.shape}')
 
+if __name__ == '__main__':
+    main()  
       
       
