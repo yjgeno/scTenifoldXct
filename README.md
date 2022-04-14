@@ -1,10 +1,16 @@
 # scTenifoldXct
 Manifold learning to detect cell-cell interactions.
 
-### Installation
+### Installation with pip (coming later)
+```shell
+pip install scTenifoldXct 
+```
+
+### Installation from source
 ```shell
 git clone https://github.com/cailab-tamu/scTenifoldXct.git
 cd scTenifoldXct
+pip install .
 ```
 
 ### Dependencies Installation with `conda`:
@@ -18,8 +24,8 @@ conda activate scTenifold
 #### Quick Start
 The following code runs scTenifoldXct on an example dataset located in the tutorials.
 ```python
-import scTenifoldXct
 import scanpy as sc
+from scTenifoldXct.core import scTenifoldXct
 
 adata = sc.read_h5ad('data/adata_short_example.h5ad')
 xct = scTenifoldXct(data = adata, 
