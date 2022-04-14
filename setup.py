@@ -4,6 +4,7 @@ from setuptools import setup, find_packages
 HERE = pathlib.Path(__file__).parent
 README = (HERE / "README.md").read_text()
 DESCRIPTION = "scTenifoldXct"
+PACKAGES = find_packages(exclude=("tests*",))
 exec(open('scTenifoldXct/version.py').read())
 
 INSTALL_REQUIRES = [
@@ -16,7 +17,7 @@ INSTALL_REQUIRES = [
         "scanpy==1.9.1",
         "scipy~=1.8.0",
         "statsmodels~=0.13.2",
-        "torch>=1.9.0",
+        "torch>=1.10.2",
         "tqdm~=4.64.0",
     ]
 
@@ -42,8 +43,6 @@ setup(
     ],
     classifiers=[
     "License :: OSI Approved :: MIT License",
-    "Environment :: Console",
-    "Framework :: Jupyter",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Programming Language :: Python :: 3",
@@ -51,7 +50,7 @@ setup(
     "Programming Language :: Python :: 3.10"
     ],
     python_requires='~=3.9.6',
-    packages=find_packages(exclude=("tests*",)), #["scTenifoldXct"], 
+    packages=PACKAGES, #["scTenifoldXct"], 
     # package_dir={"scTenifoldXct": 'scTenifoldXct'},
     # package_data={"scTenifoldXct": ['database/*.csv']},
     include_package_data=True, # MANIFEST
