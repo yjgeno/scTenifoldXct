@@ -25,10 +25,10 @@ conda activate scTenifold
 The following code runs scTenifoldXct on an example dataset located in the tutorials.
 ```python
 import scanpy as sc
-from scTenifoldXct.core import scTenifoldXct
+import scTenifoldXct as st
 
 adata = sc.read_h5ad('data/adata_short_example.h5ad')
-xct = scTenifoldXct(data = adata, 
+xct = st.scTenifoldXct(data = adata, 
                     cell_names = ['Inflam. FIB', 'Inflam. DC'],
                     obs_label = "ident",
                     rebuild_GRN = True, 
@@ -41,6 +41,7 @@ print(xct_pairs)
 ```
 
 ### Tutorial
-We have included a tutorial notebook on scTenifoldXct usage and results visualization.
+We have included two tutorial notebooks on scTenifoldXct usage and results visualization.
 
-Inflammatory skin dataset notebook: https://github.com/cailab-tamu/scTenifoldXct/blob/master/tutorials/tutorial-short_example.ipynb
+Single-sample interaction analysis:<br> https://github.com/cailab-tamu/scTenifoldXct/blob/master/tutorials/tutorial-short_example.ipynb <br>
+Differential interaction analysis across samples:<br> https://github.com/cailab-tamu/scTenifoldXct/blob/master/tutorials/tutorial-short_example.ipynb
