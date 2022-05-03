@@ -245,15 +245,15 @@ class scTenifoldXct:
                           data=self._cell_data_dic[self._cell_names[0]],
                           GRN_file_dir=GRN_file_dir,
                           rebuild_GRN=rebuild_GRN,
-                          verbose=verbose,
+                          verbose=self.verbose,
                           **kwargs)
         self._net_B = GRN(name=self._cell_names[1],
                           data=self._cell_data_dic[self._cell_names[1]],
                           GRN_file_dir=GRN_file_dir,
                           rebuild_GRN=rebuild_GRN,
-                          verbose=verbose,
+                          verbose=self.verbose,
                           **kwargs)
-        if verbose:
+        if self.verbose:
             print('building correspondence...')
 
         # cal w
@@ -268,7 +268,7 @@ class scTenifoldXct:
                                                 layers=None)
 
         self._aligned_result = None
-        if verbose:
+        if self.verbose:
             print('scTenifoldXct init completed')
 
     @property
@@ -291,7 +291,7 @@ class scTenifoldXct:
     def aligned_dist(self):
         if self._aligned_result is None:
             raise AttributeError("No aligned_dist created yet. "
-                                 "Please call train_nn() to train the neural network first.")
+                                 "Please call train_nn() to train the neural network to get embeddings first.")
 
         return self._aligned_result
 
@@ -422,7 +422,6 @@ class scTenifoldXct:
                  train = True,
                  n_steps=1000,
                  lr=0.001,
-                 verbose=False,
                  plot_losses: bool = False,
                  losses_file_name: str = None,
                  dist_metric: str = "euclidean",
@@ -430,13 +429,17 @@ class scTenifoldXct:
                  **optim_kwargs
                  ):
         if train:
-            projections = self._nn_trainer.train(n_steps=n_steps, lr=lr, verbose=verbose, **optim_kwargs)
+            projections = self._nn_trainer.train(n_steps=n_steps, 
+                                                    lr=lr, 
+                                                    verbose=self.verbose, 
+                                                    **optim_kwargs)
         else:
-            projections = self._nn_trainer.reload_embeds()
+            projections = self._nn_trainer.reload_embeds() # reload projections
         if plot_losses:
             self._nn_trainer.plot_losses(losses_file_name)
 
-        self._aligned_result = self._nn_trainer.nn_aligned_dist(gene_names_x=self._genes[self._cell_names[0]],
+        self._aligned_result = self._nn_trainer.nn_aligned_dist(projections,
+                                                                gene_names_x=self._genes[self._cell_names[0]],
                                                                 gene_names_y=self._genes[self._cell_names[1]],
                                                                 w12_shape=self.w12_shape,
                                                                 dist_metric=dist_metric,

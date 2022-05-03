@@ -1,5 +1,4 @@
 import itertools
-
 import numpy as np
 import scipy
 from scipy.sparse import coo_matrix
@@ -30,7 +29,7 @@ class Net(nn.Module):
         return y_pred
 
 
-class ManifoldAlignmentNet:
+class ManifoldAlignmentNet: # trainer
     def __init__(self,
                  data_arr,
                  w: coo_matrix,
@@ -93,8 +92,8 @@ class ManifoldAlignmentNet:
         outputs = torch.cat(y_preds[:], 0) 
         u, _, v = torch.svd(outputs, some=True)
         proj_outputs = u @ v.t()
-        self.proj_outputs_np = proj_outputs.detach().numpy()
-        return self.proj_outputs_np
+        self.projections = proj_outputs.detach().numpy()
+        return self.projections
 
     def train(self,
               n_steps = 1000,
@@ -147,8 +146,8 @@ class ManifoldAlignmentNet:
             proj_outputs.backward(rgrad)  # backprop(pt)
             optimizer.step()
 
-        self.proj_outputs_np = proj_outputs.detach().numpy()
-        return self.proj_outputs_np
+        self.projections = proj_outputs.detach().numpy()
+        return self.projections
 
     def plot_losses(self, file_name=None):
         '''plot loss every 100 steps'''
@@ -158,32 +157,43 @@ class ManifoldAlignmentNet:
             plt.savefig(file_name, dpi=80)
         plt.show()
 
-    def _pair_distance(self, gene_names_x, gene_names_y, dist_metric='euclidean'):
+    def _pair_distance(self, 
+                    projections, 
+                    gene_names_x, 
+                    gene_names_y, 
+                    dist_metric='euclidean'):
         '''distances of each directional pair in latent space'''
-        X = self.proj_outputs_np[:len(self.proj_outputs_np) // 2, :]
-        Y = self.proj_outputs_np[len(self.proj_outputs_np) // 2:, :]
+        X = projections[:len(projections) // 2, :]
+        Y = projections[len(projections) // 2:, :]
         dist = scipy.spatial.distance.cdist(X, Y, metric=dist_metric)
         dist_df = pd.DataFrame(dist, index=gene_names_x, columns=gene_names_y)
 
         return dist_df
 
-    def nn_aligned_dist(self, gene_names_x, gene_names_y, w12_shape, dist_metric='euclidean', rank=False):
+    def nn_aligned_dist(self, 
+                        projections, 
+                        gene_names_x, 
+                        gene_names_y, 
+                        w12_shape, 
+                        dist_metric='euclidean', 
+                        rank=False,
+                        verbose: bool = True):
         '''output info of each pair'''
-        print(f'computing pair-wise {dist_metric} distances...')
-        dist_df = self._pair_distance(gene_names_x, gene_names_y, dist_metric=dist_metric)
-
-        dist_df = pd.DataFrame(dist_df.stack())  # multi_index
-        dist_df.reset_index(level=[0, 1], inplace=True)
+        if verbose:
+            print(f"computing pair-wise {dist_metric} distances...")
+        dist_df = self._pair_distance(projections, gene_names_x, gene_names_y, dist_metric=dist_metric)
+        dist_df = pd.DataFrame(dist_df.stack())  # multi_index, colname 0 for dist
+        dist_df = dist_df.rename_axis([1, 2]).reset_index(level=[1, 2])
         dist_df.columns = ['ligand', 'receptor', 'dist']
         dist_df.index = dist_df['ligand'] + '_' + dist_df['receptor']
 
-        print('adding column \'correspondence\'...')
+        # print('adding column \'correspondence\'...')
         w12 = self.w.toarray()[:w12_shape[0], w12_shape[1]:]
         dist_df['correspondence'] = w12.reshape((w12.size,))
         del w12
 
         if rank:
-            print('adding column \'rank\'...')
+            # print('adding column \'rank\'...')
             dist_df = dist_df.sort_values(by=['dist'])
             dist_df['rank'] = np.arange(len(dist_df)) + 1
         return dist_df
@@ -194,7 +204,7 @@ class ManifoldAlignmentNet:
             df_nn_filtered = df_nn.loc[candidates].sort_values(by=['diff2'])  # dist difference^2 ranked L-R candidates
         else:
             df_nn_filtered = df_nn.loc[candidates].sort_values(by=['dist'])  # dist ranked L-R candidates
-        print('manifold aligned # of L-R pairs:', len(df_nn_filtered))
+        print("manifold aligned # of L-R pairs:", len(df_nn_filtered))
         df_nn_filtered['rank_filtered'] = np.arange(len(df_nn_filtered)) + 1
 
         return df_nn_filtered
