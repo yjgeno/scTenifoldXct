@@ -157,7 +157,8 @@ class ManifoldAlignmentNet: # trainer
             plt.savefig(file_name, dpi=80)
         plt.show()
 
-    def _pair_distance(self, 
+    @staticmethod
+    def _pair_distance(
                     projections, 
                     gene_names_x, 
                     gene_names_y, 
@@ -181,7 +182,7 @@ class ManifoldAlignmentNet: # trainer
         '''output info of each pair'''
         if verbose:
             print(f"computing pair-wise {dist_metric} distances...")
-        dist_df = self._pair_distance(projections, gene_names_x, gene_names_y, dist_metric=dist_metric)
+        dist_df = ManifoldAlignmentNet._pair_distance(projections, gene_names_x, gene_names_y, dist_metric=dist_metric)
         dist_df = pd.DataFrame(dist_df.stack())  # multi_index, colname 0 for dist
         dist_df = dist_df.rename_axis([1, 2]).reset_index(level=[1, 2])
         dist_df.columns = ['ligand', 'receptor', 'dist']
