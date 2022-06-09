@@ -31,7 +31,7 @@ def read_counts(counts_path: str, as_sparse: bool = True, **kwargs):
     if as_sparse:
         print("making counts sparse...")
         adata.X = (
-            sparse.coo_matrix(adata.X) if not sparse.issparse(adata.X) else adata.X
+            sparse.csr_matrix(adata.X) if not sparse.issparse(adata.X) else adata.X
         )
     return adata
 
