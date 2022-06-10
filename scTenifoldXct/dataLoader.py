@@ -63,6 +63,7 @@ def build_adata(
         try:
             print("adding metadata for genes...")
             adata.var_names = pd.read_csv(meta_gene_path, header=header, sep=sep)[0]
+            adata.var_names = adata.var_names.str.upper() # all species use upper case genes
         except Exception:
             raise ValueError("incorrect file path given to meta_gene")
     if meta_cell_path is not None and Path(meta_cell_path).is_file():

@@ -185,7 +185,6 @@ class scTenifoldXct:
                  source_celltype: str,
                  target_celltype: str,
                  obs_label: str,  # ident
-                 species: str = "human",
                  GRN_file_dir: [str, PathLike] = None,
                  rebuild_GRN: bool = False,
                  query_DB: str = None,
@@ -207,7 +206,6 @@ class scTenifoldXct:
         target_celltype:str
             The receiver cell type
         obs_label: str
-        species: str
         GRN_file_dir
         rebuild_GRN
         query_DB
@@ -218,9 +216,6 @@ class scTenifoldXct:
         verbose
         """
 
-        if species.lower() not in ["human", "mouse"]:
-            raise ValueError("species must be human or mouse")
-
         if query_DB is not None and query_DB not in ['comb', 'pairs']:
             raise ValueError('queryDB using the keyword None, \'comb\' or \'pairs\'')
 
@@ -229,9 +224,10 @@ class scTenifoldXct:
         self._cell_names = [source_celltype, target_celltype]
         self._cell_data_dic, self._cell_metric_dict = {}, {}
         self._genes = {}
+        data.var_names = data.var_names.str.upper() # all species use upper case genes
         for name in self._cell_names:
             self.load_data(data, name, obs_label)
-        self._species = species
+
         # self._LRs = self._load_db_data(Path(__file__).parent.parent / Path("data/LR.csv"),
         #                                ['ligand', 'receptor'])
         # self._TFs = self._load_db_data(Path(__file__).parent.parent / Path("data/TF.csv"), None)
@@ -273,6 +269,10 @@ class scTenifoldXct:
         self._aligned_result = None
         if self.verbose:
             print('scTenifoldXct init completed')
+
+    @property
+    def candidates(self):
+        return self._candidates
 
     @property
     def trainer(self):
@@ -319,10 +319,6 @@ class scTenifoldXct:
     def _load_db_data(self, file_path, subsets):
         df = pd.read_csv(file_path)
         df = df.loc[:, subsets] if subsets is not None else df
-        if self._species == "mouse":
-            for c in df.columns:
-                df[c] = df[c].str.capitalize()
-
         return df
 
     def _get_metric(self, adata: ArrayView, name):  # require normalized data

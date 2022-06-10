@@ -27,16 +27,17 @@ The following code runs scTenifoldXct on an example dataset located in the tutor
 import scanpy as sc
 import scTenifoldXct as st
 
-adata = sc.read_h5ad('data/adata_short_example.h5ad')
-xct = st.scTenifoldXct(data = adata, 
-                    cell_names = ['Inflam. FIB', 'Inflam. DC'],
-                    obs_label = "ident",
-                    rebuild_GRN = True, 
-                    GRN_file_dir = './Net_example_dev',  
-                    verbose = True,
-                    n_cpus = -1)
-emb = xct.get_embeds(train = True)
-xct_pairs = xct.null_test()
+adata = sc.read_h5ad('data/adata_short_example.h5ad') # load data
+xct = st.scTenifoldXct(data = adata, # an AnnData 
+                    source_celltype = 'Inflam. FIB', # sender cell type
+                    target_celltype = 'Inflam. DC', # receiver cell type
+                    obs_label = 'ident', # colname in adata.obs indicating cell types
+                    rebuild_GRN = True, # whether to build GRNs
+                    GRN_file_dir = 'Net_example_dev',  # folder path to save GRNs
+                    verbose = True, # whether to verbose the processing
+                    n_cpus = -1) # CPU multiprocessing
+emb = xct.get_embeds(train = True) # Manifold alognment to project data to low-dimensional embeddings
+xct_pairs = xct.null_test() # non-parametric test to get significant interactions
 print(xct_pairs)
 ```
 
