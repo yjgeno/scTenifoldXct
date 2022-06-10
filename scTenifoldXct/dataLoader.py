@@ -19,7 +19,7 @@ file_attrs = ["h5ad", "csv", "xlsx", "h5", "loom", "mtx", "txt"]
 read_fun_keys = ["h5ad", "csv", "excel", "hdf", "loom", "mtx", "text"]
 
 
-def read_counts(counts_path: str, as_sparse: bool = True, **kwargs):
+def _read_counts(counts_path: str, as_sparse: bool = True, **kwargs):
     file_attr = counts_path.split(".")[-1]
     if Path(counts_path).is_file() and file_attr in file_attrs:
         print(f"loading counts from {counts_path}...")
@@ -40,6 +40,7 @@ def build_adata(
     counts_path: str,
     meta_gene_path: Union[None, str],
     meta_cell_path: Union[None, str],
+    meta_cell_cols: None,
     sep="\t",
     header = None,
     log_normalize: bool = True,
@@ -56,18 +57,20 @@ def build_adata(
     Returns:
         AnnData
     """
-    adata = read_counts(counts_path, **kwargs)
+    adata = _read_counts(counts_path, **kwargs)
    
     if meta_gene_path is not None and Path(meta_gene_path).is_file():
         try:
-            print("adding metadata for variables...")
-            adata.var = pd.read_csv(meta_gene_path, header=header, sep=sep)
+            print("adding metadata for genes...")
+            adata.var_names = pd.read_csv(meta_gene_path, header=header, sep=sep)[0]
         except Exception:
             raise ValueError("incorrect file path given to meta_gene")
     if meta_cell_path is not None and Path(meta_cell_path).is_file():
         try:
-            print("adding metadata for observations...")
+            print("adding metadata for cells...")
             adata.obs = pd.read_csv(meta_cell_path, header=header, sep=sep)
+            if meta_cell_cols is not None:
+                adata.obs.columns = meta_cell_cols
         except Exception:
             raise ValueError("incorrect file path given to meta_cell")
 

@@ -13,7 +13,7 @@ INSTALL_REQUIRES = [
         "numpy~=1.21.6",
         "pandas~=1.4.2",
         "python_igraph~=0.9.10",
-        "ray~=1.11.0",
+        "ray>=1.11.0",
         "scanpy==1.9.1",
         "scipy~=1.8.0",
         "statsmodels~=0.13.2",

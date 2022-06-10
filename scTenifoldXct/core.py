@@ -182,7 +182,8 @@ def concat_grns(grns, axis: int = 0):
 class scTenifoldXct:
     def __init__(self,
                  data: anndata.AnnData,
-                 cell_names: List[str],
+                 source_celltype: str,
+                 target_celltype: str,
                  obs_label: str,  # ident
                  species: str = "human",
                  GRN_file_dir: [str, PathLike] = None,
@@ -201,8 +202,10 @@ class scTenifoldXct:
         ----------
         data: anndata.AnnData
             The data used to generate GRNs, manifold alignment results
-        cell_names: A list of str
-            The names of the data
+        source_celltype:str
+            The sender cell type
+        target_celltype:str
+            The receiver cell type
         obs_label: str
         species: str
         GRN_file_dir
@@ -223,7 +226,7 @@ class scTenifoldXct:
 
         self._metrics = ["mean", "var"]
         self.verbose = verbose
-        self._cell_names = cell_names
+        self._cell_names = [source_celltype, target_celltype]
         self._cell_data_dic, self._cell_metric_dict = {}, {}
         self._genes = {}
         for name in self._cell_names:
@@ -431,7 +434,6 @@ class scTenifoldXct:
         if train:
             projections = self._nn_trainer.train(n_steps=n_steps, 
                                                     lr=lr, 
-                                                    verbose=self.verbose, 
                                                     **optim_kwargs)
         else:
             projections = self._nn_trainer.reload_embeds() # reload projections
@@ -484,7 +486,8 @@ def main():
     workpath = Path.joinpath(Path(__file__).parent.parent, "tutorials/data")
     adata = sc.read_h5ad(workpath / 'adata_short_example.h5ad')
     xct = scTenifoldXct(data = adata, 
-                            cell_names = ['Inflam. FIB', 'Inflam. DC'],
+                            source_celltype = 'Inflam. FIB',
+                            target_celltype = 'Inflam. DC',
                             obs_label = "ident",
                             rebuild_GRN = True, # timer
                             GRN_file_dir = './Net_example_dev',  
