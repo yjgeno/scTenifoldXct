@@ -14,6 +14,7 @@ import pandas as pd
 from typing import Union
 from scipy import sparse
 
+sc.settings.verbosity = 0
 
 # https://scanpy.readthedocs.io/en/stable/api.html#reading
 file_attrs = ["h5ad", "csv", "xlsx", "h5", "loom", "mtx", "txt", "mat"]
@@ -42,7 +43,7 @@ def _read_counts(counts_path: str,
             import h5py
             f = h5py.File(counts_path,'r')
             # print(f.keys())
-            counts = np.array(f.get('X'))
+            counts = np.array(f.get('X'), dtype='float32')
             if transpose:
                 counts = counts.T
             adata = sc.AnnData(counts)
