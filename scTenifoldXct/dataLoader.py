@@ -22,7 +22,7 @@ read_fun_keys = ["h5ad", "csv", "excel", "hdf", "loom", "mtx", "text"]
 def _read_counts(counts_path: str, as_sparse: bool = True, **kwargs):
     file_attr = counts_path.split(".")[-1]
     if Path(counts_path).is_file() and file_attr in file_attrs:
-        print(f"loading counts from {counts_path}...")
+        print(f"loading counts from {counts_path}")
         read_fun_key = read_fun_keys[file_attrs.index(file_attr)]
         read_fun = getattr(sc, f"read_{read_fun_key}")  # define sc.read_{} function
         adata = read_fun(counts_path, **kwargs).transpose() # transpose counts file
