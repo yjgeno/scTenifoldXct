@@ -253,7 +253,7 @@ class scTenifoldXct:
                           verbose=self.verbose,
                           **kwargs)
         if self.verbose:
-            print('building correspondence...')
+            print("building correspondence...")
 
         # cal w
         self._w, self.w12_shape = self._build_w(alpha=alpha,
@@ -268,7 +268,7 @@ class scTenifoldXct:
 
         self._aligned_result = None
         if self.verbose:
-            print('scTenifoldXct init completed')
+            print("scTenifoldXct init completed")
 
     @property
     def candidates(self):
@@ -325,7 +325,7 @@ class scTenifoldXct:
         '''compute metrics for each gene'''
         data_norm = adata.X.toarray() if scipy.sparse.issparse(adata.X) else adata.X.copy()  # adata.layers['log1p']
         if self.verbose:
-            print('(cell, feature):', data_norm.shape)
+            print("(cell, feature):", data_norm.shape)
         if (data_norm % 1 != 0).any():  # check space: True for log (float), False for counts (int)
             mean = np.mean(data_norm, axis=0)  # .toarray()
             var = np.var(data_norm, axis=0)  # .toarray()
@@ -335,21 +335,20 @@ class scTenifoldXct:
 
     def fill_metric(self):
         val_df = pd.DataFrame()
-        for c in self._LRs.columns:
-            for m in self._metrics:
-                val_df[f"{m}_L"] = self._LRs[c].map(self._cell_metric_dict[self._cell_names[0]][m]).fillna(0.)
-                val_df[f"{m}_R"] = self._LRs[c].map(self._cell_metric_dict[self._cell_names[1]][m]).fillna(0.)
+        for m in self._metrics:
+            val_df[f"{m}_L"] = self._LRs["ligand"].map(self._cell_metric_dict[self._cell_names[0]][m]).fillna(0.)
+            val_df[f"{m}_R"] = self._LRs["receptor"].map(self._cell_metric_dict[self._cell_names[1]][m]).fillna(0.)
         df = pd.concat([self._LRs, val_df], axis=1)  # concat 1:1 since sharing same index
         df = df[(df['mean_L'] > 0) & (df['mean_R'] > 0)]  # filter 0 (none or zero expression) of LR
         if self.verbose:
-            print('selected {} LR pairs'.format(df.shape[0]))
+            print(f"selected {df.shape[0]} LR pairs")
 
         return df
 
     def _get_candidates(self, df_filtered):
         '''selected L-R candidates'''
-        candidates = [a + '_' + b for a, b in zip(np.asarray(df_filtered['ligand'], dtype=str),
-                                                  np.asarray(df_filtered['receptor'], dtype=str))]
+        candidates = [a + '_' + b for a, b in zip(np.asarray(df_filtered["ligand"], dtype=str),
+                                                  np.asarray(df_filtered["receptor"], dtype=str))]
         return candidates
 
     @staticmethod
@@ -386,11 +385,11 @@ class scTenifoldXct:
         if scale_w:
             w12_orig_sum = w12.sum()
         if query_DB is not None:
-            if query_DB == 'comb':
+            if query_DB == "comb":
                 # ada.var index of LR genes (the intersect of DB and object genes, no pair relationship maintained)
                 used_row_index = np.isin(self._genes[ligand], self._LRs["ligand"])
                 used_col_index = np.isin(self._genes[receptor], self._LRs["receptor"])
-            elif query_DB == 'pairs':
+            elif query_DB == "pairs":
                 # maintain L-R pair relationship, both > 0
                 selected_LR = self._LR_metrics[(self._LR_metrics[f"mean_L"] > 0) & (self._LR_metrics[f"mean_R"] > 0)]
                 used_row_index = np.isin(self._genes[ligand], selected_LR["ligand"])
@@ -447,7 +446,7 @@ class scTenifoldXct:
     def plot_losses(self, **kwargs):
         self._nn_trainer.plot_losses(**kwargs)
 
-    def plot_pcNet_graph(self, gene_names, view='sender', **kwargs):
+    def plot_pcNet_graph(self, gene_names, view="sender", **kwargs):
         if view not in ["sender", "receiver"]:
             raise ValueError("view needs to be sender or receiver")
 
@@ -479,12 +478,12 @@ class scTenifoldXct:
                          plot=plot_result)
 
 def main():
-    workpath = Path.joinpath(Path(__file__).parent.parent, "tutorials/data")
+    workpath = Path.joinpath(Path(__file__).parent.parent, 'tutorials/data')
     adata = sc.read_h5ad(workpath / 'adata_short_example.h5ad')
     xct = scTenifoldXct(data = adata, 
                             source_celltype = 'Inflam. FIB',
                             target_celltype = 'Inflam. DC',
-                            obs_label = "ident",
+                            obs_label = 'ident',
                             rebuild_GRN = True, # timer
                             GRN_file_dir = './Net_example_dev',  
                             verbose = True,

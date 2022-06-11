@@ -112,7 +112,7 @@ class merge_scTenifoldXct:
             df_nn_all['diff2_rank'] = np.arange(len(df_nn_all)) + 1
         self._aligned_diff_result = df_nn_all
         if self.verbose:
-            print(f"merged pair-wise distances")
+            print("merged pair-wise distances")
         # return df_nn_all
 
     def chi2_diff_test(self,
@@ -138,7 +138,7 @@ class merge_scTenifoldXct:
     def plot_merge_pcNet_graph(self, 
                             gene_names: list[str], 
                             sample: int = 0, 
-                            view: str ='sender', 
+                            view: str ="sender", 
                             **kwargs):
         if view not in ["sender", "receiver"]:
             raise ValueError("view needs to be sender or receiver")
