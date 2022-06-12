@@ -68,7 +68,13 @@ class GRN:
             if GRN_file_dir is not None:
                 self._gene_names = pd.Index(pd.read_csv(Path(GRN_file_dir) / Path(f"gene_name_{name}.tsv"),
                                                         sep='\t')["gene_name"])
-                self._net = sparse.load_npz(self._pc_net_file_name)
+                try:
+                    self._net = sparse.load_npz(self._pc_net_file_name)
+                except FileNotFoundError: # for .mat loading
+                    import h5py
+                    f = h5py.File((Path(GRN_file_dir) / Path(f"pcnet_{name}.mat")), 'r')
+                    self._net = sparse.csc_matrix(np.array(f.get(list(f.keys())[0]), dtype='float32'))
+
 
     @classmethod
     def from_sparse(cls, name, sparse_matrix, gene_names):

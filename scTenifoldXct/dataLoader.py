@@ -43,7 +43,7 @@ def _read_counts(counts_path: str,
             import h5py
             f = h5py.File(counts_path,'r')
             # print(f.keys())
-            counts = np.array(f.get('X'), dtype='float32')
+            counts = np.array(f.get(list(f.keys())[0]), dtype='float32')
             if transpose:
                 counts = counts.T
             adata = sc.AnnData(counts)
