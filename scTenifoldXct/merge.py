@@ -135,17 +135,17 @@ class merge_scTenifoldXct:
                                  "Please call train_nn() to train the neural network to get embeddings first.")
         return self._aligned_diff_result
 
-    def plot_merge_pcNet_graph(self, 
-                            gene_names: list[str], 
-                            sample: int = 0, 
-                            view: str ="sender", 
-                            **kwargs):
-        if view not in ["sender", "receiver"]:
-            raise ValueError("view needs to be sender or receiver")
+    # def plot_merge_pcNet_graph(self, 
+    #                         gene_names: list[str], 
+    #                         sample: int = 0, 
+    #                         view: str ="sender", 
+    #                         **kwargs):
+    #     if view not in ["sender", "receiver"]:
+    #         raise ValueError("view needs to be sender or receiver")
 
-        g = plot_pcNet_method(self.Xcts[sample]._net_A if view == "sender" else self.Xcts[sample]._net_B,
-                          gene_names=gene_names,
-                          tf_names=self.Xcts[sample]._TFs["TF_symbol"].to_list(),
-                          **kwargs)
-        return g
+    #     g = plot_pcNet_method(self.Xcts[sample]._net_A if view == "sender" else self.Xcts[sample]._net_B,
+    #                       gene_names=gene_names,
+    #                       tf_names=self.Xcts[sample]._TFs["TF_symbol"].to_list(),
+    #                       **kwargs)
+    #     return g
 
