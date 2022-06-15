@@ -114,14 +114,13 @@ def null_test(df_nn: pd.DataFrame,
         raise IndexError('require resulted dataframe with column \'dist\' and \'correspondence\'')
 
     else:
-        dist_test = df_nn[df_nn.index.isin(candidates)]
+        dist_test = df_nn[df_nn.index.isin(candidates)].copy()
         # filter pairs with correspondence_score zero
         if filter_zeros:
             mask = df_nn['correspondence'] != 0
         else:
             mask = np.ones(len(df_nn), dtype=bool)
         dist_null = df_nn[(~df_nn.index.isin(candidates)) & (mask)]
-
         dist_test['p_val'] = dist_test['dist'].apply(
             lambda x: scipy.stats.percentileofscore(dist_null['dist'], x) / 100)
         df_enriched = dist_test[dist_test['p_val'] < pval].sort_values(by=['dist'])
@@ -139,5 +138,5 @@ def null_test(df_nn: pd.DataFrame,
                 plt.axvline(d, ls=(0, (1, 1)), linewidth=0.5, alpha=0.8, c=c)
             plt.xlabel('distance')
             plt.show()
-
+        del dist_test
     return df_enriched
