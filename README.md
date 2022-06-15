@@ -33,10 +33,10 @@ xct = st.scTenifoldXct(data = adata, # an AnnData
                     target_celltype = 'Inflam. DC', # receiver cell type
                     obs_label = 'ident', # colname in adata.obs indicating cell types
                     rebuild_GRN = True, # whether to build GRNs
-                    GRN_file_dir = 'Net_example_dev',  # folder path to save GRNs
+                    GRN_file_dir = 'Net_example_dev',  # folder path to GRNs
                     verbose = True, # whether to verbose the processing
-                    n_cpus = -1) # CPU multiprocessing
-emb = xct.get_embeds(train = True) # Manifold alognment to project data to low-dimensional embeddings
+                    n_cpus = -1) # CPU multiprocessing, -1 to use all
+emb = xct.get_embeds(train = True) # Manifold alignment to project data to low-dimensional embeddings
 xct_pairs = xct.null_test() # non-parametric test to get significant interactions
 print(xct_pairs)
 ```
