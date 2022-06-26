@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 
 from scTenifoldXct.core import null_test
+from scTenifoldXct.merge import merge_scTenifoldXct
 
 
 def generate_fake_df_nn(n_ligand=3000, n_receptors=3000, n_cands=200):
@@ -33,6 +34,8 @@ def test_null_test(df_nn, candidates, filter_zeros):
     null_test(df_nn=df_nn, candidates=candidates, filter_zeros=filter_zeros)
 
 
-def test_chi2_test(xct_skin):
-    xct_skin.train_nn(n_steps= 1000, lr = 0.001)
-    xct_skin.chi2_test(dof=3, pval=0.05, cal_FDR=True, plot_result=True)
+def test_chi2_test(xct_test, xct_test_r):
+    xct_tests = merge_scTenifoldXct(xct_test, xct_test_r)
+    emb = xct_tests.get_embeds(train=True)
+    xct_tests.nn_aligned_diff(emb) 
+    xct_tests.chi2_diff_test()
