@@ -17,10 +17,10 @@ class merge_scTenifoldXct:
         self._merge_candidates = list(set(self.Xcts[0]._candidates).union(set(self.Xcts[1]._candidates)))
         self.verbose = verbose
         self.n_dim = 3
-        self.mu = 0.9
+        self.mu = 1
         # cal big W
         if self.verbose:
-            print("merging samples and building correspondence...")
+            print(f"merge samples and build correspondence, mu {self.mu}")
         self._W, self.W12_shape = self._build_W()
 
         self._nn_trainer = ManifoldAlignmentNet(self._get_data_arrs(),

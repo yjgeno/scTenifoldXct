@@ -1,4 +1,3 @@
-from typing import List
 import os
 from os import PathLike
 from pathlib import Path
@@ -15,7 +14,7 @@ from .pcNet import make_pcNet
 from .nn import ManifoldAlignmentNet
 from .stat import null_test, chi2_test
 from .visualization import plot_pcNet_method
-
+from memory_profiler import profile
 sc.settings.verbosity = 0
 
 
@@ -64,7 +63,7 @@ class GRN:
                                                                    sep='\t')
         else:
             if verbose:
-                print(f'loading GRN {name}...')
+                print(f'load GRN {name}')
             if GRN_file_dir is not None:
                 self._gene_names = pd.Index(pd.read_csv(Path(GRN_file_dir) / Path(f"gene_name_{name}.tsv"),
                                                         sep='\t')["gene_name"])
@@ -259,7 +258,7 @@ class scTenifoldXct:
                           verbose=self.verbose,
                           **kwargs)
         if self.verbose:
-            print("building correspondence...")
+            print("build correspondence and initiate a trainer")
 
         # cal w
         self._w, self.w12_shape = self._build_w(alpha=alpha,
@@ -410,7 +409,7 @@ class scTenifoldXct:
                         2 * w12_orig_sum) * w12  # scale factor using w12_orig
         w12 = w12.todok()
         if self.verbose:
-            print(f"concatenating GRNs...")
+            print(f"concatenate GRNs...")
         w = sparse.vstack([sparse.hstack([self._net_A.net.todok() + 1, w12]),
                            sparse.hstack([w12.T, self._net_B.net.todok() + 1])])
 
@@ -422,6 +421,7 @@ class scTenifoldXct:
                      for _, cell_data in self._cell_data_dic.items()]
         return data_arr  # a list
 
+    @profile(precision=4)
     def get_embeds(self,
                  train = True,
                  n_steps=1000,
@@ -483,20 +483,39 @@ class scTenifoldXct:
                          candidates=self._candidates,
                          plot=plot_result)
 
-def main():
-    workpath = Path.joinpath(Path(__file__).parent.parent, 'tutorials/data')
-    adata = sc.read_h5ad(workpath / 'adata_short_example.h5ad')
+def main(args):
+    # workpath = Path.joinpath(Path(__file__).parent.parent, 'tutorials/data')
+    from time import time
+
+    adata = sc.datasets.pbmc3k()
+    adata = adata[:args.n_sample, :args.n_feature].copy()
+    adata.obs["ident"] = ["cell_A"] * (len(adata)//2) + ["cell_B"] * (args.n_sample-len(adata)//2)
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.log1p(adata)
+    adata.layers["log1p"] = adata.X 
     xct = scTenifoldXct(data = adata, 
-                            source_celltype = 'Inflam. FIB',
-                            target_celltype = 'Inflam. DC',
+                            source_celltype = 'cell_A',
+                            target_celltype = 'cell_B',
                             obs_label = 'ident',
                             rebuild_GRN = True, # timer
                             GRN_file_dir = './Net_example_dev',  
                             verbose = True,
-                            n_cpus = -1)
+                            n_cpus = args.n_cpus)
+    start_t = time()
+    emb = xct.get_embeds(train = True)
+    print('training time: {:.2f} s'.format(time()-start_t))
+    xct_pairs = xct.null_test()
+
 
 if __name__ == '__main__':
-    main()
-    # python -m scTenifoldXct.core
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--n_sample', type = int, default = 100)
+    parser.add_argument('--n_feature', type = int, default = 3000)
+    parser.add_argument('--n_cpus', type = int, default = -1)
+
+    args = parser.parse_args()
+    main(args)
+    # python -m scTenifoldXct.core --n_sample 100 --n_feature 100 --n_cpus 8
 
 
