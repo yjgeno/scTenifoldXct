@@ -384,11 +384,9 @@ class scTenifoldXct:
 
         # make it sparse to reduce mem usage
         w12 = sparse.coo_matrix(metric_a_temp @ metric_b_temp.T)
+        net_A, net_B = self._net_A.net.toarray()+1, self._net_B.net.toarray()+1
         del metric_a_temp
         del metric_b_temp
-
-        if scale_w:
-            w12_orig_sum = w12.sum()
         if query_DB is not None:
             if query_DB == "comb":
                 # ada.var index of LR genes (the intersect of DB and object genes, no pair relationship maintained)
@@ -401,19 +399,14 @@ class scTenifoldXct:
                 used_col_index = np.isin(self._genes[receptor], selected_LR["receptor"])
             else:
                 raise ValueError("queryDB must be: [None, \'comb\' or \'pairs\']")
-
             w12 = self._zero_out_w(w12, used_row_index, used_col_index)
-        if scale_w:
-            w12 = mu * ((self._net_A.net.sum() + self._net_A.net.shape[0] * self._net_A.net.shape[1]) +
-                        (self._net_B.net.sum() + self._net_B.net.shape[0] * self._net_B.net.shape[1])) / (
-                        2 * w12_orig_sum) * w12  # scale factor using w12_orig
-        w12 = w12.todok()
-        if self.verbose:
-            print(f"concatenate GRNs...")
-        w = sparse.vstack([sparse.hstack([self._net_A.net.todok() + 1, w12]),
-                           sparse.hstack([w12.T, self._net_B.net.todok() + 1])])
-
-        return w, w12.shape
+        if scale_w:  # scale factor using w12_orig
+            w12 = (mu * (net_A.sum() + net_B.sum()) / (2 * w12.sum())) * w12.toarray() 
+        # w12 = w12.todok()
+        # w = sparse.vstack([sparse.hstack([self._net_A.net.todok() + 1, w12]),
+        #                    sparse.hstack([w12.T, self._net_B.net.todok() + 1])])
+        w = np.block([[net_A, w12], [w12.T, net_B]])
+        return sparse.coo_matrix(w), w12.shape
 
     def _get_data_arr(self):  # change the name (not always count data)
         '''return a list of counts in numpy array, gene by cell'''
