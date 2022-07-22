@@ -14,7 +14,7 @@ from .pcNet import make_pcNet
 from .nn import ManifoldAlignmentNet
 from .stat import null_test, chi2_test
 from .visualization import plot_pcNet_method
-from memory_profiler import profile
+# from memory_profiler import profile
 sc.settings.verbosity = 0
 
 
@@ -414,11 +414,11 @@ class scTenifoldXct:
                      for _, cell_data in self._cell_data_dic.items()]
         return data_arr  # a list
 
-    @profile(precision=4)
+    # @profile(precision=4)
     def get_embeds(self,
                  train = True,
-                 n_steps=1000,
-                 lr=0.001,
+                 n_steps = 1000,
+                 lr = 0.001,
                  plot_losses: bool = False,
                  losses_file_name: str = None,
                  dist_metric: str = "euclidean",
@@ -479,9 +479,10 @@ class scTenifoldXct:
 def main(args):
     # workpath = Path.joinpath(Path(__file__).parent.parent, 'tutorials/data')
     from time import time
-
     adata = sc.datasets.pbmc3k()
-    adata = adata[:args.n_sample, :args.n_feature].copy()
+    adata = adata[
+        :np.random.choice(adata.shape[0], args.n_sample, replace=False), 
+        :np.random.choice(adata.shape[1], args.n_feature, replace=False)].copy()
     adata.obs["ident"] = ["cell_A"] * (len(adata)//2) + ["cell_B"] * (args.n_sample-len(adata)//2)
     sc.pp.normalize_total(adata, target_sum=1e4)
     sc.pp.log1p(adata)

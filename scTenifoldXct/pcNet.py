@@ -84,7 +84,7 @@ def make_pcNet(X,
     if n_cpus != 1:
         if ray.is_initialized():
             ray.shutdown()
-        if n_cpus == -1:
+        if (n_cpus == -1) or (n_cpus > os.cpu_count()):
             n_cpus = os.cpu_count()
         ray.init(num_cpus = n_cpus)
         print(f'ray init, using {n_cpus} CPUs')
