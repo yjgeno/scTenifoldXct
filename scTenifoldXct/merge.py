@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy
 from scipy import sparse
+from memory_profiler import profile
 
 from .core import scTenifoldXct
 from .nn import ManifoldAlignmentNet
@@ -17,7 +18,7 @@ class merge_scTenifoldXct:
         self._merge_candidates = list(set(self.Xcts[0]._candidates).union(set(self.Xcts[1]._candidates)))
         self.verbose = verbose
         self.n_dim = 3
-        self.mu = 1
+        self.mu = 0.9
         # cal big W
         if self.verbose:
             print(f"merge samples and build correspondence")
@@ -28,7 +29,7 @@ class merge_scTenifoldXct:
                                                 n_dim=self.n_dim,
                                                 layers=None)
         if self.verbose:
-            print("merge_scTenifoldXct init completed")
+            print("merge_scTenifoldXct init completed\n")
 
     def _get_data_arrs(self):  
         '''return a list of counts in numpy array, gene by cell'''
@@ -60,10 +61,11 @@ class merge_scTenifoldXct:
     def merge_candidates(self):
         return self._merge_candidates
 
+    @profile(precision=4)
     def get_embeds(self,
                 train = True,
-                n_steps=1000,
-                lr=0.001,
+                n_steps=3000,
+                lr=0.01,
                 verbose=False,
                 plot_losses: bool = False,
                 losses_file_name: str = None,
@@ -149,3 +151,58 @@ class merge_scTenifoldXct:
     #                       **kwargs)
     #     return g
 
+def main(args):
+    from time import time
+    import scanpy as sc
+    print("T?", args.rebuild)
+    adata = sc.datasets.pbmc3k()
+    adata_WT = adata[
+        np.random.choice(adata.shape[0], args.n_sample, replace=False), 
+        np.random.choice(adata.shape[1], args.n_feature, replace=False)].copy()
+    adata_WT.obs["ident"] = ["cell_A"] * (len(adata_WT)//2) + ["cell_B"] * (args.n_sample-len(adata_WT)//2)
+    adata_KO = adata_WT.copy()
+    adata_KO.obs["ident"] = np.random.permutation(adata_WT.obs["ident"])
+    for adata in [adata_WT, adata_KO]:
+        sc.pp.normalize_total(adata, target_sum=1e4)
+        sc.pp.log1p(adata)
+        adata.layers["log1p"] = adata.X 
+    xct_WT = scTenifoldXct(data = adata_WT, 
+                            source_celltype = 'cell_A',
+                            target_celltype = 'cell_B',
+                            obs_label = 'ident',
+                            rebuild_GRN = args.rebuild, # timer
+                            GRN_file_dir = './Net_example_dev_WT',  
+                            verbose = True,
+                            n_cpus = args.n_cpus,
+                            )
+    xct_KO = scTenifoldXct(data = adata_KO, 
+                        source_celltype = 'cell_A',
+                        target_celltype = 'cell_B',
+                        obs_label = 'ident',
+                        rebuild_GRN = args.rebuild, # timer
+                        GRN_file_dir = './Net_example_dev_KO',  
+                        verbose = True,
+                        n_cpus = args.n_cpus,
+                        )
+    XCTs = merge_scTenifoldXct(xct_KO, xct_WT)
+    start_t = time()
+    emb = XCTs.get_embeds(train = True)
+    print('training time: {:.2f} s'.format(time()-start_t))
+    XCTs.nn_aligned_diff(emb) 
+    xcts_pairs_diff = XCTs.chi2_diff_test()
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--n_sample', type = int, default = 100)
+    parser.add_argument('--n_feature', type = int, default = 3000)
+    parser.add_argument('--n_cpus', type = int, default = -1)
+    feature_parser = parser.add_mutually_exclusive_group(required=False)
+    feature_parser.add_argument('--rebuild', dest = 'rebuild', action = 'store_true')
+    feature_parser.add_argument('--no-rebuild', dest = 'rebuild', action ='store_false')
+    parser.set_defaults(rebuild = True)
+    
+    args = parser.parse_args()
+    main(args)
+    # python -m scTenifoldXct.merge --n_sample 100 --n_feature 100 --n_cpus 8 --rebuild

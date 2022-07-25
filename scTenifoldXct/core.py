@@ -193,7 +193,7 @@ class scTenifoldXct:
                  GRN_file_dir: [str, PathLike] = None,
                  rebuild_GRN: bool = False,
                  query_DB: str = None,
-                 alpha: float = 0.55,
+                 alpha: float = 0.5,
                  mu: float = 1.,
                  scale_w: bool = True,
                  n_dim: int = 3,
@@ -273,7 +273,7 @@ class scTenifoldXct:
 
         self._aligned_result = None
         if self.verbose:
-            print("scTenifoldXct init completed")
+            print("scTenifoldXct init completed\n")
 
     @property
     def candidates(self):
