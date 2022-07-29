@@ -98,7 +98,7 @@ class ManifoldAlignmentNet: # trainer
 
     def train(self,
               n_steps = 1000,
-              lr = 0.001,
+              lr = 0.01,
               verbose = False,
               **optim_kwargs):
         assert n_steps > 0
