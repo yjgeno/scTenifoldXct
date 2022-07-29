@@ -54,8 +54,9 @@ class ManifoldAlignmentNet: # trainer
             for i in range(1, self.n_models + 1):
                 n_h = scipy.stats.gmean([self.data_arr[i - 1].shape[1], n_dim]).astype(int)
                 layer_dic[i] = [a * n_h, n_h, n_dim]
-        elif len(layers) != 3:
-            raise ValueError('input node numbers of three hidden layers')
+                # layer_dic[i] = [32, 16, n_dim]
+        # elif len(layers) != 3:
+        #     raise ValueError('input node numbers of three hidden layers')
         else:
             for i in range(1, self.n_models + 1):
                 layer_dic[i] = layers
@@ -106,7 +107,7 @@ class ManifoldAlignmentNet: # trainer
         L = torch.from_numpy(L_np.astype(np.float32))
         params = [self.model_dic[f'model_{i}'].parameters() for i in range(1, self.n_models + 1)]
         optimizer = torch.optim.Adam(itertools.chain(*params), lr=lr, **optim_kwargs)
-
+        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=10, verbose=True)
         for i in range(1, self.n_models + 1):
             self.model_dic[f'model_{i}'].train()
 
@@ -124,12 +125,12 @@ class ManifoldAlignmentNet: # trainer
             proj_outputs = u @ v.t()
 
             # Compute loss
-            loss = torch.trace(proj_outputs.t() @ L @ proj_outputs)
+            loss = torch.trace(proj_outputs.t() @ L @ proj_outputs) /3000
 
             if t == 0 or t % 10 == 9:
                 if verbose:
                     print(t + 1, loss.item())
-                self.losses.append(loss.item())
+            self.losses.append(loss.item())
 
             # Zero gradients, perform a backward pass, and update the weights.
             proj_outputs.retain_grad()  # et
@@ -145,6 +146,7 @@ class ManifoldAlignmentNet: # trainer
             # Backpropogate the Rimannian gradient w.r.t proj_outputs
             proj_outputs.backward(rgrad)  # backprop(pt)
             optimizer.step()
+            # scheduler.step()
 
         self.projections = proj_outputs.detach().numpy()
         return self.projections
@@ -152,7 +154,7 @@ class ManifoldAlignmentNet: # trainer
     def plot_losses(self, file_name=None):
         '''plot loss every 100 steps'''
         plt.figure(figsize=(6, 5), dpi=80)
-        plt.plot(np.arange(len(self.losses)) * 100, self.losses)
+        plt.plot(np.arange(len(self.losses)), self.losses)
         if file_name is not None:
             plt.savefig(file_name, dpi=80)
         plt.show()

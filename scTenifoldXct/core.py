@@ -1,4 +1,3 @@
-from typing import List
 import os
 from os import PathLike
 from pathlib import Path
@@ -15,7 +14,7 @@ from .pcNet import make_pcNet
 from .nn import ManifoldAlignmentNet
 from .stat import null_test, chi2_test
 from .visualization import plot_pcNet_method
-
+# from memory_profiler import profile
 sc.settings.verbosity = 0
 
 
@@ -64,7 +63,7 @@ class GRN:
                                                                    sep='\t')
         else:
             if verbose:
-                print(f'loading GRN {name}...')
+                print(f'load GRN {name}')
             if GRN_file_dir is not None:
                 self._gene_names = pd.Index(pd.read_csv(Path(GRN_file_dir) / Path(f"gene_name_{name}.tsv"),
                                                         sep='\t')["gene_name"])
@@ -194,7 +193,7 @@ class scTenifoldXct:
                  GRN_file_dir: [str, PathLike] = None,
                  rebuild_GRN: bool = False,
                  query_DB: str = None,
-                 alpha: float = 0.55,
+                 alpha: float = 0.5,
                  mu: float = 1.,
                  scale_w: bool = True,
                  n_dim: int = 3,
@@ -259,7 +258,7 @@ class scTenifoldXct:
                           verbose=self.verbose,
                           **kwargs)
         if self.verbose:
-            print("building correspondence...")
+            print("build correspondence and initiate a trainer")
 
         # cal w
         self._w, self.w12_shape = self._build_w(alpha=alpha,
@@ -274,7 +273,7 @@ class scTenifoldXct:
 
         self._aligned_result = None
         if self.verbose:
-            print("scTenifoldXct init completed")
+            print("scTenifoldXct init completed\n")
 
     @property
     def candidates(self):
@@ -385,11 +384,9 @@ class scTenifoldXct:
 
         # make it sparse to reduce mem usage
         w12 = sparse.coo_matrix(metric_a_temp @ metric_b_temp.T)
+        net_A, net_B = self._net_A.net.toarray()+1, self._net_B.net.toarray()+1
         del metric_a_temp
         del metric_b_temp
-
-        if scale_w:
-            w12_orig_sum = w12.sum()
         if query_DB is not None:
             if query_DB == "comb":
                 # ada.var index of LR genes (the intersect of DB and object genes, no pair relationship maintained)
@@ -402,19 +399,14 @@ class scTenifoldXct:
                 used_col_index = np.isin(self._genes[receptor], selected_LR["receptor"])
             else:
                 raise ValueError("queryDB must be: [None, \'comb\' or \'pairs\']")
-
             w12 = self._zero_out_w(w12, used_row_index, used_col_index)
-        if scale_w:
-            w12 = mu * ((self._net_A.net.sum() + self._net_A.net.shape[0] * self._net_A.net.shape[1]) +
-                        (self._net_B.net.sum() + self._net_B.net.shape[0] * self._net_B.net.shape[1])) / (
-                        2 * w12_orig_sum) * w12  # scale factor using w12_orig
-        w12 = w12.todok()
-        if self.verbose:
-            print(f"concatenating GRNs...")
-        w = sparse.vstack([sparse.hstack([self._net_A.net.todok() + 1, w12]),
-                           sparse.hstack([w12.T, self._net_B.net.todok() + 1])])
-
-        return w, w12.shape
+        if scale_w:  # scale factor using w12_orig
+            w12 = (mu * (net_A.sum() + net_B.sum()) / (2 * w12.sum())) * w12.toarray() 
+        # w12 = w12.todok()
+        # w = sparse.vstack([sparse.hstack([self._net_A.net.todok() + 1, w12]),
+        #                    sparse.hstack([w12.T, self._net_B.net.todok() + 1])])
+        w = np.block([[net_A, w12], [w12.T, net_B]])
+        return sparse.coo_matrix(w), w12.shape
 
     def _get_data_arr(self):  # change the name (not always count data)
         '''return a list of counts in numpy array, gene by cell'''
@@ -422,10 +414,11 @@ class scTenifoldXct:
                      for _, cell_data in self._cell_data_dic.items()]
         return data_arr  # a list
 
+    # @profile(precision=4)
     def get_embeds(self,
                  train = True,
-                 n_steps=1000,
-                 lr=0.001,
+                 n_steps = 1000,
+                 lr = 0.01,
                  plot_losses: bool = False,
                  losses_file_name: str = None,
                  dist_metric: str = "euclidean",
@@ -483,20 +476,62 @@ class scTenifoldXct:
                          candidates=self._candidates,
                          plot=plot_result)
 
-def main():
-    workpath = Path.joinpath(Path(__file__).parent.parent, 'tutorials/data')
-    adata = sc.read_h5ad(workpath / 'adata_short_example.h5ad')
+def main(args):
+    # workpath = Path.joinpath(Path(__file__).parent.parent, 'tutorials/data')
+    from time import time
+    if args.eva:
+        adata = sc.datasets.pbmc3k()
+        adata = adata[
+            np.random.choice(adata.shape[0], args.n_sample, replace=False), 
+            np.random.choice(adata.shape[1], args.n_feature, replace=False)].copy()
+        adata.obs["ident"] = ["cell_A"] * (len(adata)//2) + ["cell_B"] * (args.n_sample-len(adata)//2)
+        sc.pp.normalize_total(adata, target_sum=1e4)
+        sc.pp.log1p(adata)
+        adata.layers["log1p"] = adata.X 
+    else:
+        from .dataLoader import build_adata
+        adata = build_adata(counts_path = args.file)
+        print(adata)
+
     xct = scTenifoldXct(data = adata, 
-                            source_celltype = 'Inflam. FIB',
-                            target_celltype = 'Inflam. DC',
-                            obs_label = 'ident',
-                            rebuild_GRN = True, # timer
-                            GRN_file_dir = './Net_example_dev',  
-                            verbose = True,
-                            n_cpus = -1)
+                        source_celltype = args.sender,
+                        target_celltype = args.receiver,
+                        obs_label = args.label,
+                        rebuild_GRN = args.rebuild, # timer
+                        GRN_file_dir = args.workdir,  
+                        verbose = args.verbose,
+                        n_cpus = args.n_cpus)
+    start_t = time()
+    emb = xct.get_embeds(train = True)
+    print('training time: {:.2f} s'.format(time()-start_t))
+    xct_pairs = xct.null_test()
+    xct_pairs.to_csv(f'{args.workdir}/{args.output}.csv')
+
 
 if __name__ == '__main__':
-    main()
-    # python -m scTenifoldXct.core
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('file', type = str)
+    parser.add_argument('-w', '--workdir', type = str, default = 'xct_results')
+    parser.add_argument('-o', '--output', type = str, default = 'xct_enriched')
+    parser.add_argument('-s', '--sender', type = str, default = 'cell_A')
+    parser.add_argument('-r', '--receiver', type = str, default = 'cell_B')
+    parser.add_argument('-l', '--label', type = str, default = 'ident')
+    parser.add_argument('--n_cpus', type = int, default = -1)
+    parser.add_argument('-v', '--verbose', action = 'store_true')
+
+    feature_parser = parser.add_mutually_exclusive_group(required=False)
+    feature_parser.add_argument('--rebuild', dest = 'rebuild', action = 'store_true')
+    feature_parser.add_argument('--no-rebuild', dest = 'rebuild', action ='store_false')
+    parser.set_defaults(rebuild = True)
+
+    parser.add_argument('--eva', action = 'store_true')
+    parser.add_argument('--n_sample', type = int, default = 100)
+    parser.add_argument('--n_feature', type = int, default = 3000)
+    
+    args = parser.parse_args()
+    main(args)
+    # python -m scTenifoldXct.core --eva --rebuild --n_sample 100 --n_feature 100 --n_cpus 8 -v
+    # python -m scTenifoldXct.core tutorials/data/adata_short_example.h5ad --rebuild -s "Inflam. FIB" -r "Inflam. DC" --n_cpus 8 -v
 
 

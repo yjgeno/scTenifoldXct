@@ -146,3 +146,5 @@ cython_debug/
 
 # scTenifoldXct
 scTenifoldXct/*.pyc
+tutorials/*
+!tutorials/*.ipynb
