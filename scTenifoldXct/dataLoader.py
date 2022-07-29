@@ -22,7 +22,7 @@ read_fun_keys = ["h5ad", "csv", "excel", "hdf", "loom", "mtx", "text"] # fun fro
 
 
 def _read_counts(counts_path: str, 
-                transpose: bool = True, 
+                transpose: bool = False, 
                 **kwargs):
 
     """Read counts file to build an AnnData.
@@ -62,9 +62,9 @@ def _read_counts(counts_path: str,
 
 def build_adata(
     counts_path: str,
-    meta_gene_path: Union[None, str],
-    meta_cell_path: Union[None, str],
-    meta_cell_cols: None,
+    meta_gene_path: Union[None, str] = None,
+    meta_cell_path: Union[None, str] = None,
+    meta_cell_cols: Union[None, str] = None,
     sep="\t",
     header = None,
     log_normalize: bool = True,

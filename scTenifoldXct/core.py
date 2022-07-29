@@ -418,7 +418,7 @@ class scTenifoldXct:
     def get_embeds(self,
                  train = True,
                  n_steps = 1000,
-                 lr = 0.001,
+                 lr = 0.01,
                  plot_losses: bool = False,
                  losses_file_name: str = None,
                  dist_metric: str = "euclidean",
@@ -479,37 +479,59 @@ class scTenifoldXct:
 def main(args):
     # workpath = Path.joinpath(Path(__file__).parent.parent, 'tutorials/data')
     from time import time
-    adata = sc.datasets.pbmc3k()
-    adata = adata[
-        :np.random.choice(adata.shape[0], args.n_sample, replace=False), 
-        :np.random.choice(adata.shape[1], args.n_feature, replace=False)].copy()
-    adata.obs["ident"] = ["cell_A"] * (len(adata)//2) + ["cell_B"] * (args.n_sample-len(adata)//2)
-    sc.pp.normalize_total(adata, target_sum=1e4)
-    sc.pp.log1p(adata)
-    adata.layers["log1p"] = adata.X 
+    if args.eva:
+        adata = sc.datasets.pbmc3k()
+        adata = adata[
+            np.random.choice(adata.shape[0], args.n_sample, replace=False), 
+            np.random.choice(adata.shape[1], args.n_feature, replace=False)].copy()
+        adata.obs["ident"] = ["cell_A"] * (len(adata)//2) + ["cell_B"] * (args.n_sample-len(adata)//2)
+        sc.pp.normalize_total(adata, target_sum=1e4)
+        sc.pp.log1p(adata)
+        adata.layers["log1p"] = adata.X 
+    else:
+        from .dataLoader import build_adata
+        adata = build_adata(counts_path = args.file)
+        print(adata)
+
     xct = scTenifoldXct(data = adata, 
-                            source_celltype = 'cell_A',
-                            target_celltype = 'cell_B',
-                            obs_label = 'ident',
-                            rebuild_GRN = True, # timer
-                            GRN_file_dir = './Net_example_dev',  
-                            verbose = True,
-                            n_cpus = args.n_cpus)
+                        source_celltype = args.sender,
+                        target_celltype = args.receiver,
+                        obs_label = args.label,
+                        rebuild_GRN = args.rebuild, # timer
+                        GRN_file_dir = args.workdir,  
+                        verbose = args.verbose,
+                        n_cpus = args.n_cpus)
     start_t = time()
     emb = xct.get_embeds(train = True)
     print('training time: {:.2f} s'.format(time()-start_t))
     xct_pairs = xct.null_test()
+    xct_pairs.to_csv(f'{args.workdir}/{args.output}.csv')
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument('file', type = str)
+    parser.add_argument('-w', '--workdir', type = str, default = 'xct_results')
+    parser.add_argument('-o', '--output', type = str, default = 'xct_enriched')
+    parser.add_argument('-s', '--sender', type = str, default = 'cell_A')
+    parser.add_argument('-r', '--receiver', type = str, default = 'cell_B')
+    parser.add_argument('-l', '--label', type = str, default = 'ident')
+    parser.add_argument('--n_cpus', type = int, default = -1)
+    parser.add_argument('-v', '--verbose', action = 'store_true')
+
+    feature_parser = parser.add_mutually_exclusive_group(required=False)
+    feature_parser.add_argument('--rebuild', dest = 'rebuild', action = 'store_true')
+    feature_parser.add_argument('--no-rebuild', dest = 'rebuild', action ='store_false')
+    parser.set_defaults(rebuild = True)
+
+    parser.add_argument('--eva', action = 'store_true')
     parser.add_argument('--n_sample', type = int, default = 100)
     parser.add_argument('--n_feature', type = int, default = 3000)
-    parser.add_argument('--n_cpus', type = int, default = -1)
-
+    
     args = parser.parse_args()
     main(args)
-    # python -m scTenifoldXct.core --n_sample 100 --n_feature 100 --n_cpus 8
+    # python -m scTenifoldXct.core --eva --rebuild --n_sample 100 --n_feature 100 --n_cpus 8 -v
+    # python -m scTenifoldXct.core tutorials/data/adata_short_example.h5ad --rebuild -s "Inflam. FIB" -r "Inflam. DC" --n_cpus 8 -v
 
 

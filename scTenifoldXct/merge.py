@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy
 from scipy import sparse
-from memory_profiler import profile
+# from memory_profiler import profile
 
 from .core import scTenifoldXct
 from .nn import ManifoldAlignmentNet
@@ -61,7 +61,7 @@ class merge_scTenifoldXct:
     def merge_candidates(self):
         return self._merge_candidates
 
-    @profile(precision=4)
+    # @profile(precision=4)
     def get_embeds(self,
                 train = True,
                 n_steps=3000,
@@ -154,55 +154,96 @@ class merge_scTenifoldXct:
 def main(args):
     from time import time
     import scanpy as sc
-    print("T?", args.rebuild)
-    adata = sc.datasets.pbmc3k()
-    adata_WT = adata[
-        np.random.choice(adata.shape[0], args.n_sample, replace=False), 
-        np.random.choice(adata.shape[1], args.n_feature, replace=False)].copy()
-    adata_WT.obs["ident"] = ["cell_A"] * (len(adata_WT)//2) + ["cell_B"] * (args.n_sample-len(adata_WT)//2)
-    adata_KO = adata_WT.copy()
-    adata_KO.obs["ident"] = np.random.permutation(adata_WT.obs["ident"])
-    for adata in [adata_WT, adata_KO]:
-        sc.pp.normalize_total(adata, target_sum=1e4)
-        sc.pp.log1p(adata)
-        adata.layers["log1p"] = adata.X 
-    xct_WT = scTenifoldXct(data = adata_WT, 
+
+    if args.eva:
+        adata = sc.datasets.pbmc3k()
+        adata_WT = adata[
+            np.random.choice(adata.shape[0], args.n_sample, replace=False), 
+            np.random.choice(adata.shape[1], args.n_feature, replace=False)].copy()
+        adata_WT.obs["ident"] = ["cell_A"] * (len(adata_WT)//2) + ["cell_B"] * (args.n_sample-len(adata_WT)//2)
+        adata_KO = adata_WT.copy()
+        adata_KO.obs["ident"] = np.random.permutation(adata_WT.obs["ident"])
+        for adata in [adata_WT, adata_KO]:
+            sc.pp.normalize_total(adata, target_sum=1e4)
+            sc.pp.log1p(adata)
+            adata.layers["log1p"] = adata.X 
+        xct_WT = scTenifoldXct(data = adata_WT, 
+                                source_celltype = 'cell_A',
+                                target_celltype = 'cell_B',
+                                obs_label = 'ident',
+                                rebuild_GRN = args.rebuild, # timer
+                                GRN_file_dir = './Net_example_dev_WT',  
+                                verbose = True,
+                                n_cpus = args.n_cpus,
+                                )
+        xct_KO = scTenifoldXct(data = adata_KO, 
                             source_celltype = 'cell_A',
                             target_celltype = 'cell_B',
                             obs_label = 'ident',
                             rebuild_GRN = args.rebuild, # timer
-                            GRN_file_dir = './Net_example_dev_WT',  
+                            GRN_file_dir = './Net_example_dev_KO',  
                             verbose = True,
                             n_cpus = args.n_cpus,
                             )
-    xct_KO = scTenifoldXct(data = adata_KO, 
-                        source_celltype = 'cell_A',
-                        target_celltype = 'cell_B',
-                        obs_label = 'ident',
-                        rebuild_GRN = args.rebuild, # timer
-                        GRN_file_dir = './Net_example_dev_KO',  
-                        verbose = True,
-                        n_cpus = args.n_cpus,
-                        )
+    else:
+        from .dataLoader import build_adata
+        adata = build_adata(counts_path = args.file)
+        print(adata)
+        ada_WT = adata[adata.obs[args.cond_label] == args.cond_WT, :].copy()
+        ada_KO = adata[adata.obs[args.cond_label] == args.cond_KO, :].copy()
+        del adata
+        xct_WT = scTenifoldXct(data = ada_WT, 
+                            source_celltype = args.sender,
+                            target_celltype = args.receiver,
+                            obs_label = args.label,
+                            rebuild_GRN = args.rebuild, # timer
+                            GRN_file_dir = args.workdir,  
+                            verbose = args.verbose,
+                            n_cpus = args.n_cpus)
+        xct_KO = scTenifoldXct(data = ada_KO, 
+                            source_celltype = args.sender,
+                            target_celltype = args.receiver,
+                            obs_label = args.label,
+                            rebuild_GRN = args.rebuild, # timer
+                            GRN_file_dir = args.workdir,  
+                            verbose = args.verbose,
+                            n_cpus = args.n_cpus)
     XCTs = merge_scTenifoldXct(xct_KO, xct_WT)
     start_t = time()
     emb = XCTs.get_embeds(train = True)
     print('training time: {:.2f} s'.format(time()-start_t))
     XCTs.nn_aligned_diff(emb) 
     xcts_pairs_diff = XCTs.chi2_diff_test()
+    xcts_pairs_diff.to_csv(f'{args.workdir}/{args.output}.csv')
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_sample', type = int, default = 100)
-    parser.add_argument('--n_feature', type = int, default = 3000)
+
+    parser.add_argument('file', type = str)
+    parser.add_argument('cond_label', type = str)
+    parser.add_argument('cond_WT', type = str)
+    parser.add_argument('cond_KO', type = str)
+    parser.add_argument('-w', '--workdir', type = str, default = 'xct_results')
+    parser.add_argument('-o', '--output', type = str, default = 'xct_enriched_diff')
+    parser.add_argument('-s', '--sender', type = str, default = 'cell_A')
+    parser.add_argument('-r', '--receiver', type = str, default = 'cell_B')
+    parser.add_argument('-l', '--label', type = str, default = 'ident')
     parser.add_argument('--n_cpus', type = int, default = -1)
+    parser.add_argument('-v', '--verbose', action = 'store_true')
+
     feature_parser = parser.add_mutually_exclusive_group(required=False)
     feature_parser.add_argument('--rebuild', dest = 'rebuild', action = 'store_true')
     feature_parser.add_argument('--no-rebuild', dest = 'rebuild', action ='store_false')
     parser.set_defaults(rebuild = True)
+
+    parser.add_argument('--eva', action = 'store_true')
+    parser.add_argument('--n_sample', type = int, default = 100)
+    parser.add_argument('--n_feature', type = int, default = 3000)
     
     args = parser.parse_args()
     main(args)
     # python -m scTenifoldXct.merge --n_sample 100 --n_feature 100 --n_cpus 8 --rebuild
+    # python -m scTenifoldXct.merge tutorials/data/adata_merge_example.h5ad NormalvsTumor N T --rebuild -s "B cells" -r "Fibroblasts" --n_cpus 8 -v
+    
